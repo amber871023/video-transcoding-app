@@ -5,66 +5,29 @@ import axios from 'axios';
 const Login = ({ isOpen, onClose, onSuccess }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [emailError, setEmailError] = useState('');
-  const [passwordError, setPasswordError] = useState('');
+  const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const toast = useToast();
 
-  const validateEmail = (email) => {
-    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return re.test(email);
-  };
-
-  const handleLogin = async () => {
-    let isValid = true;
-
-    // Reset errors
-    setEmailError('');
-    setPasswordError('');
-
-    // Validate email
-    if (!email) {
-      setEmailError('Email is required.');
-      isValid = false;
-    } else if (!validateEmail(email)) {
-      setEmailError('Email is invalid.');
-      isValid = false;
-    }
-
-    // Validate password
-    if (!password) {
-      setPasswordError('Password is required.');
-      isValid = false;
-    }
-
-    if (!isValid) return;
-
+  const handleSubmit = async () => {
     setIsLoading(true);
+    setError('');
     try {
-      const response = await axios.post('http://localhost:5000/api/users/login', {
-        email,
-        password,
-      });
-
+      const response = await axios.post('http://localhost:3000/users/login', { email, password });
       const { token } = response.data;
       localStorage.setItem('token', token);
-
       toast({
         title: 'Login successful.',
-        description: "You've successfully logged in.",
         status: 'success',
         duration: 5000,
         isClosable: true,
       });
-
-      onClose();
       onSuccess();
-
     } catch (error) {
-      console.error(error);
+      setError('Invalid email or password.');
       toast({
-        title: 'Error',
-        description: error.response?.data?.msg || 'Invalid email or password. Please try again.',
+        title: 'Login failed.',
+        description: error.response?.data?.msg || 'Please try again.',
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -74,22 +37,35 @@ const Login = ({ isOpen, onClose, onSuccess }) => {
     }
   };
 
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      handleSubmit();
+    }
+  };
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} isCentered>
       <ModalOverlay />
       <ModalContent>
-        <ModalHeader textAlign={"center"} fontSize={"2xl"}>Log in</ModalHeader>
+        <ModalHeader>Log in</ModalHeader>
         <ModalCloseButton />
         <ModalBody>
-          <FormControl isInvalid={!!emailError}>
+          <FormControl isInvalid={!!error}>
             <FormLabel>Email address</FormLabel>
-            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-            <FormErrorMessage>{emailError}</FormErrorMessage>
-          </FormControl>
-          <FormControl mt={4} isInvalid={!!passwordError}>
-            <FormLabel>Password</FormLabel>
-            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-            <FormErrorMessage>{passwordError}</FormErrorMessage>
+            <Input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              onKeyDown={handleKeyDown}
+            />
+            <FormLabel mt={4}>Password</FormLabel>
+            <Input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              onKeyDown={handleKeyDown}
+            />
+            {error && <FormErrorMessage>{error}</FormErrorMessage>}
           </FormControl>
         </ModalBody>
         <ModalFooter>
@@ -98,8 +74,7 @@ const Login = ({ isOpen, onClose, onSuccess }) => {
             color="white"
             _hover={{ bg: "#151257" }}
             _active={{ bg: "#151257" }}
-            mr={3}
-            onClick={handleLogin}
+            onClick={handleSubmit}
             isLoading={isLoading}
           >
             Log in

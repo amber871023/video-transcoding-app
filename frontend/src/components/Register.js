@@ -2,82 +2,33 @@ import React, { useState } from 'react';
 import { Modal, ModalOverlay, ModalContent, ModalHeader, ModalCloseButton, ModalBody, ModalFooter, Button, Input, FormControl, FormLabel, FormErrorMessage, useToast } from '@chakra-ui/react';
 import axios from 'axios';
 
-const Register = ({ isOpen, onClose, onRegisterSuccess }) => {
+const Register = ({ isOpen, onClose, onSuccess }) => {
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [emailError, setEmailError] = useState('');
-  const [usernameError, setUsernameError] = useState('');
-  const [passwordError, setPasswordError] = useState('');
+  const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const toast = useToast();
 
-  const validateEmail = (email) => {
-    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return re.test(email);
-  };
-
-  const handleSignup = async () => {
-    let isValid = true;
-
-    // Reset errors
-    setEmailError('');
-    setUsernameError('');
-    setPasswordError('');
-
-    // Validate email
-    if (!email) {
-      setEmailError('Email is required.');
-      isValid = false;
-    } else if (!validateEmail(email)) {
-      setEmailError('Email is invalid.');
-      isValid = false;
-    }
-
-    // Validate username
-    if (!username) {
-      setUsernameError('Username is required.');
-      isValid = false;
-    }
-
-    // Validate password
-    if (!password) {
-      setPasswordError('Password is required.');
-      isValid = false;
-    } else if (password.length < 6) {
-      setPasswordError('Password must be at least 6 characters.');
-      isValid = false;
-    }
-
-    if (!isValid) return;
-
+  const handleSubmit = async () => {
     setIsLoading(true);
+    setError('');
     try {
-      const response = await axios.post('http://localhost:5000/api/users/register', {
-        email,
-        username,
-        password,
-      });
-
+      const response = await axios.post('http://localhost:3000/users/register', { email, username, password });
       const { token } = response.data;
       localStorage.setItem('token', token);
-
       toast({
-        title: 'Account created.',
-        description: "Your account has been created and you're now logged in.",
+        title: 'Registration successful.',
         status: 'success',
         duration: 5000,
         isClosable: true,
       });
-
-      onClose();
-      onRegisterSuccess();
-
+      onSuccess();
     } catch (error) {
-      console.error(error);
+      setError('Failed to register.');
       toast({
-        title: 'Error',
-        description: error.response?.data?.msg || 'Something went wrong. Please try again.',
+        title: 'Registration failed.',
+        description: error.response?.data?.msg || 'Please try again.',
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -87,27 +38,42 @@ const Register = ({ isOpen, onClose, onRegisterSuccess }) => {
     }
   };
 
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      handleSubmit();
+    }
+  };
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} isCentered>
       <ModalOverlay />
       <ModalContent>
-        <ModalHeader textAlign={"center"} fontSize={"2xl"}>Sign up</ModalHeader>
+        <ModalHeader>Sign up</ModalHeader>
         <ModalCloseButton />
         <ModalBody>
-          <FormControl isInvalid={!!emailError}>
+          <FormControl isInvalid={!!error}>
             <FormLabel>Email address</FormLabel>
-            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-            <FormErrorMessage>{emailError}</FormErrorMessage>
-          </FormControl>
-          <FormControl mt={4} isInvalid={!!usernameError}>
-            <FormLabel>Username</FormLabel>
-            <Input type="text" value={username} onChange={(e) => setUsername(e.target.value)} />
-            <FormErrorMessage>{usernameError}</FormErrorMessage>
-          </FormControl>
-          <FormControl mt={4} isInvalid={!!passwordError}>
-            <FormLabel>Password</FormLabel>
-            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-            <FormErrorMessage>{passwordError}</FormErrorMessage>
+            <Input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              onKeyDown={handleKeyDown}
+            />
+            <FormLabel mt={4}>Username</FormLabel>
+            <Input
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              onKeyDown={handleKeyDown}
+            />
+            <FormLabel mt={4}>Password</FormLabel>
+            <Input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              onKeyDown={handleKeyDown}
+            />
+            {error && <FormErrorMessage>{error}</FormErrorMessage>}
           </FormControl>
         </ModalBody>
         <ModalFooter>
@@ -116,8 +82,7 @@ const Register = ({ isOpen, onClose, onRegisterSuccess }) => {
             color="white"
             _hover={{ bg: "#151257" }}
             _active={{ bg: "#151257" }}
-            mr={3}
-            onClick={handleSignup}
+            onClick={handleSubmit}
             isLoading={isLoading}
           >
             Sign up
