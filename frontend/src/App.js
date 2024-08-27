@@ -6,15 +6,13 @@ import Footer from './components/Footer';
 import Home from './pages/Home';
 import Videos from './pages/Videos';
 
-// Import other pages like VideosPage when they are ready
-
 const App = () => {
   return (
     <Router>
       <Navbar />
       <Routes>
-        <Route exact path="/" component={Home} />
-        <Route path="/videos" component={Videos} /> {/* Replace with actual VideosPage component */}
+        <Route exact path="/" element={<Home />} />
+        <Route path="/videos" element={<Videos />} />
       </Routes>
       <Footer />
     </Router>
