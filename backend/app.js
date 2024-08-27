@@ -5,14 +5,13 @@ const morgan = require('morgan');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const fileUpload = require('express-fileupload');
-const { transcodeVideo } = require('./transcoder');
 
 const app = express();
 
 const mongoDB = process.env.MONGODB_URI;
 
 // MongoDB connection
-mongoose.connect(mongoDB, { useNewUrlParser: true, useUnifiedTopology: true })
+mongoose.connect(mongoDB)
   .then(() => console.log("MongoDB connected"))
   .catch(err => console.log(`MongoDB connection err: ${err.message}`));
 
