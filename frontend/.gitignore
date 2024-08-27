@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Production build files
+build/
+dist/
+
+# Environment variables
+.env
+
+# Local development files
+.vscode/
+.idea/
+.DS_Store
+
+# Logs
+logs/
+*.log
+
+# Cache
+.cache/
+.next/
+
+# Coverage directory used by testing tools
+coverage/
+
+# System files
+Thumbs.db
+.DS_Store
