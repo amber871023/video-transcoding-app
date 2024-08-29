@@ -30,7 +30,7 @@ const Register = ({ isOpen, onClose, onSuccess }) => {
         title: 'Registration failed.',
         description: error.response?.data?.msg || 'Please try again.',
         status: 'error',
-        duration: 5000,
+        duration: 3000,
         isClosable: true,
       });
     } finally {

@@ -2,7 +2,6 @@ const mongoose = require('mongoose');
 
 const videoSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },
-  username: { type: String, required: false }, // Add this field
   title: { type: String, required: true },
   originalVideoPath: { type: String, required: true },
   transcodedVideoPath: { type: String },

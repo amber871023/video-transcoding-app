@@ -29,7 +29,7 @@ const Login = ({ isOpen, onClose, onSuccess }) => {
         title: 'Login failed.',
         description: error.response?.data?.msg || 'Please try again.',
         status: 'error',
-        duration: 5000,
+        duration: 3000,
         isClosable: true,
       });
     } finally {

@@ -3,6 +3,15 @@ import { Box, Text, Button, VStack, HStack, useToast, Container, Image, Stack } 
 import { useDropzone } from 'react-dropzone';
 import { FaFileUpload, FaExchangeAlt, FaDownload } from 'react-icons/fa';
 import CustomButton from '../components/CustomButton';
+import axios from 'axios';
+
+
+// Convert seconds to mm:ss format
+const formatDuration = (durationInSeconds) => {
+  const minutes = Math.floor(durationInSeconds / 60);
+  const seconds = Math.floor(durationInSeconds % 60);
+  return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+};
 
 const VideoPage = () => {
   const [videos, setVideos] = useState([]);
@@ -10,53 +19,43 @@ const VideoPage = () => {
   const toast = useToast();
 
   const onDrop = useCallback((acceptedFiles) => {
-    // Handle file upload
     console.log(acceptedFiles);
   }, []);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
 
   useEffect(() => {
-    // Fake video data for testing purposes
-    const fakeVideos = [
-      {
-        _id: '1',
-        originalName: 'Video1.mp4',
-        size: 150,
-        duration: '3:45',
-        format: 'MP4',
-        thumbnail: 'https://via.placeholder.com/150?text=Video+1', // Example placeholder image URL
-        videoUrl: 'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4', // Replace with the actual video URL
-      },
-      {
-        _id: '2',
-        originalName: 'Video2.avi',
-        size: 200,
-        duration: '5:20',
-        format: 'AVI',
-        thumbnail: 'https://via.placeholder.com/150?text=Video+2',
-        videoUrl: 'https://www.example.com/video2.avi', // Replace with the actual video URL
-      },
-      {
-        _id: '3',
-        originalName: 'Video3.mov',
-        size: 350,
-        duration: '10:10',
-        format: 'MOV',
-        thumbnail: 'https://via.placeholder.com/150?text=Video+3',
-        videoUrl: 'https://www.example.com/video3.mov', // Replace with the actual video URL
-      },
-    ];
+    const fetchVideos = async () => {
+      try {
+        const response = await axios.get('http://localhost:3000/videos', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          },
+        });
+        setVideos(response.data);
+      } catch (error) {
+        console.error('Error fetching videos:', error);
+        toast({
+          title: 'Error fetching videos.',
+          description: 'Please try again later.',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+      }
+    };
 
-    // Simulate an API call
-    setTimeout(() => {
-      setVideos(fakeVideos);
-    }, 1000);
-  }, []);
+    fetchVideos();
+  }, [toast]);
 
   const handleReformat = async (videoId) => {
     try {
-      // Simulate reformatting logic
+      await axios.post(`http://localhost:3000/videos/reformat/${videoId}`, {}, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+
       toast({
         title: 'Video reformatted successfully.',
         status: 'success',
@@ -75,14 +74,7 @@ const VideoPage = () => {
   };
 
   const handleDownload = (videoId) => {
-    // Simulate file download
-    toast({
-      title: 'Download started.',
-      description: `Downloading video with ID: ${videoId}`,
-      status: 'info',
-      duration: 5000,
-      isClosable: true,
-    });
+    window.location.href = `http://localhost:3000/videos/download/${videoId}`;
   };
 
   const handlePlayVideo = (videoId) => {
@@ -123,7 +115,6 @@ const VideoPage = () => {
                 <Box key={video._id} p={4} shadow="md" borderWidth="1px" borderRadius="md" width="100%" background={'gray.100'}>
                   <Stack
                     direction={playingVideoId === video._id ? 'column' : { base: 'column', md: 'row' }}
-
                     alignItems={playingVideoId === video._id ? 'center' : 'start'}
                     spacing={4}
                   >
@@ -136,7 +127,7 @@ const VideoPage = () => {
                       />
                     ) : (
                       <Image
-                        src={video.thumbnail}
+                        src={video.thumbnailPath ? `http://localhost:3000/${video.thumbnailPath}` : video.thumbnail}
                         alt={video.originalName}
                         boxSize={{ base: "100%", md: "250px" }}
                         objectFit="cover"
@@ -147,8 +138,8 @@ const VideoPage = () => {
                     )}
                     <VStack align={"start"} spacing={4}>
                       <Text fontWeight="bold" fontSize={{ base: "md", md: "lg" }}>{video.originalName}</Text>
-                      <Text fontSize={{ base: "sm", md: "md" }}>Size: {video.size} MB</Text>
-                      <Text fontSize={{ base: "sm", md: "md" }}>Duration: {video.duration}</Text>
+                      <Text fontSize={{ base: "sm", md: "md" }}>Size: {Math.round(video.size / 1024 / 1024)} MB</Text>
+                      <Text fontSize={{ base: "sm", md: "md" }}>Duration: {formatDuration(video.duration)}</Text>
                       <Text fontSize={{ base: "sm", md: "md" }}>File Type: {video.format}</Text>
                       <HStack spacing={4} pt={{ base: 2, md: 0 }}>
                         <CustomButton leftIcon={FaExchangeAlt} size="md" bg="blue.400" boxShadow={"lg"} onClick={() => handleReformat(video._id)}>

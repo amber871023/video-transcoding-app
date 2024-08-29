@@ -47,7 +47,6 @@ exports.uploadVideo = async (req, res) => {
 
     // Create a new video document
     const newVideo = new Video({
-      username: req.user ? req.user.username : null,
       userId: req.user ? req.user.id : null,
       title: title || 'Untitled Video',
       originalVideoPath: videoPath,
@@ -67,7 +66,7 @@ exports.uploadVideo = async (req, res) => {
   }
 };
 
-exports.transcodeVideo = async (req, res) => {
+exports.convertVideo = async (req, res) => {
   try {
     const videoId = req.body.videoId;
 
@@ -80,7 +79,14 @@ exports.transcodeVideo = async (req, res) => {
       return res.status(404).json({ message: 'Video not found.' });
     }
 
-    const outputPath = video.originalVideoPath.replace(/\.([^\.]+)$/, `-transcoded.${req.body.format.toLowerCase()}`);
+    // Ensure the transcoded_videos directory exists
+    const transcodedDir = path.join(__dirname, '..', 'transcoded_videos');
+    if (!fs.existsSync(transcodedDir)) {
+      fs.mkdirSync(transcodedDir, { recursive: true });
+    }
+
+    const outputFileName = `${path.basename(video.originalVideoPath, path.extname(video.originalVideoPath))}-transcoded.${req.body.format.toLowerCase()}`;
+    const outputPath = path.join(transcodedDir, outputFileName);
 
     await new Promise((resolve, reject) => {
       ffmpeg(video.originalVideoPath)
@@ -94,12 +100,12 @@ exports.transcodeVideo = async (req, res) => {
     await video.save();
 
     return res.json({ message: 'Transcoding completed', video });
-
   } catch (err) {
     console.error('Error during transcoding:', err);
     return res.status(500).json({ message: 'Error during transcoding.', error: err });
   }
 };
+
 
 exports.downloadVideo = async (req, res) => {
   try {
@@ -124,7 +130,6 @@ exports.downloadVideo = async (req, res) => {
 exports.deleteVideo = async (req, res) => {
   try {
     const videoId = req.params.id;
-    console.log('Deleting video with ID:', videoId);
 
     const video = await Video.findByIdAndDelete(videoId);
     if (!video) {
@@ -157,5 +162,16 @@ exports.deleteVideo = async (req, res) => {
   } catch (error) {
     console.error('Error deleting video:', error);
     res.status(500).json({ message: 'Error deleting video' });
+  }
+};
+
+
+exports.getUserVideos = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const videos = await Video.find({ userId });
+    res.json(videos);
+  } catch (err) {
+    res.status(500).json({ error: true, msg: 'Failed to fetch videos' });
   }
 };

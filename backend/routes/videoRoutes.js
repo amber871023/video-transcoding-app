@@ -4,7 +4,7 @@ const multer = require('multer');
 const Video = require('../models/Video');
 const { authorize } = require('../middlewares/auth');
 const optionalAuthorize = require('../middlewares/optAuth');
-const { uploadVideo, transcodeVideo, downloadVideo, deleteVideo } = require('../controllers/videoController');
+const { uploadVideo, convertVideo, downloadVideo, deleteVideo, getUserVideos } = require('../controllers/videoController');
 const path = require('path');
 
 const storage = multer.diskStorage({
@@ -46,12 +46,10 @@ const upload = multer({
 
 
 router.post('/upload', optionalAuthorize, upload.single('video'), uploadVideo);
-router.get('/', (req, res) => {
-  Video.find().then(videos => res.json(videos)).catch(err => res.status(400).json(err));
-});
-router.post('/transcode', transcodeVideo);
+router.post('/convert', optionalAuthorize, upload.none(), convertVideo);
 router.delete('/delete/:id', optionalAuthorize, deleteVideo);
-router.get('/download/:id', downloadVideo);
+router.get('/download/:id', optionalAuthorize, downloadVideo);
+router.get('/', authorize, getUserVideos);
 
 
 module.exports = router;

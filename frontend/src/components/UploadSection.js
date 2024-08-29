@@ -1,140 +1,241 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Box, VStack, Text, Select, Stack, HStack, Image, Progress } from '@chakra-ui/react';
-import { FaFileUpload, FaExchangeAlt, FaTrashAlt } from 'react-icons/fa';
+import { Box, VStack, Text, Select, Stack, HStack, Image, Progress, IconButton, Tag, TagLabel } from '@chakra-ui/react';
+import { FaFileUpload, FaExchangeAlt, FaTrashAlt, FaDownload, FaChevronDown, FaFileVideo } from 'react-icons/fa';
 import CustomButton from './CustomButton';
 import axios from 'axios';
 
-// convert seconds to mm:ss format
-const formatDuration = (durationInSeconds) => {
-  const minutes = Math.floor(durationInSeconds / 60);
-  const seconds = Math.floor(durationInSeconds % 60);
-  return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-};
-
 const UploadSection = () => {
-  const [uploadedFile, setUploadedFile] = useState(null);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [thumbnailPath, setThumbnailPath] = useState('');
-  const [selectedFormat, setSelectedFormat] = useState('MP4');
-  const [duration, setDuration] = useState(0);
-  const [fileFormat, setFileFormat] = useState('');
-  const [fileSize, setFileSize] = useState(0);
-  const [videoId, setVideoId] = useState(null);
+  const [videoFiles, setVideoFiles] = useState([]);
+  const [conversionStarted, setConversionStarted] = useState(false);
+
+  useEffect(() => {
+    if (videoFiles.length === 0) {
+      setConversionStarted(false);
+    }
+  }, [videoFiles]);
 
   const onDrop = useCallback((acceptedFiles) => {
-    const file = acceptedFiles[0];
-    if (!file) {
-      console.error('No file uploaded.');
-      return;
-    }
+    const newVideoFiles = acceptedFiles.map(file => ({
+      file,
+      originalFormat: file.name.split('.').pop().toUpperCase(),
+      thumbnailPath: '',
+      format: 'MP4',
+      size: 0,
+      duration: 0,
+      id: null,
+      status: 'WAITING',
+      progress: 0,
+    }));
 
-    const formData = new FormData();
-    formData.append('video', file);
-    setUploadedFile(file);
-
-    // Upload video to the server
-    axios.post('http://localhost:3000/videos/upload', formData, {
-      onUploadProgress: (progressEvent) => {
-        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-        setUploadProgress(percentCompleted);
-      },
-    })
-      .then(response => {
-        console.log('Upload successful:', response.data);
-        setVideoId(response.data._id); // Assuming _id is the field name for video ID in your response
-        setThumbnailPath(response.data.thumbnailPath);
-        setFileFormat(response.data.format);
-        setFileSize(response.data.size);
-        setDuration(response.data.duration);
-      })
-      .catch(error => {
-        console.error('Error uploading file:', error);
-      });
+    setVideoFiles(prevFiles => [...prevFiles, ...newVideoFiles]);
   }, []);
 
-  const handleFormatChange = (event) => {
-    setSelectedFormat(event.target.value);
+  const handleUpload = async (file, index) => {
+    try {
+      const formData = new FormData();
+      formData.append('video', file.file);
+
+      updateFileStatus(index, 'Uploading');
+
+      const response = await axios.post('http://localhost:3000/videos/upload', formData, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+        onUploadProgress: (progressEvent) => {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          updateFileProgress(index, percentCompleted);
+        },
+      });
+
+      updateFileData(index, {
+        id: response.data._id,
+        thumbnailPath: response.data.thumbnailPath,
+        size: response.data.size,
+        duration: response.data.duration,
+        originalFormat: response.data.format.toUpperCase(),
+      });
+
+      updateFileStatus(index, 'Uploaded');
+
+      await handleConvert({ ...file, id: response.data._id }, index);
+
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      updateFileStatus(index, 'Failed');
+    }
   };
 
-  const handleConvert = async () => {
-    if (!uploadedFile) {
-      console.error('No file available for conversion.');
+  const handleConvert = async (file, index) => {
+    if (!file.id) {
+      console.error('Cannot convert without a video ID.');
       return;
     }
 
     try {
-      const formData = new FormData();
-      formData.append('file', uploadedFile);
-      formData.append('format', selectedFormat);
+      updateFileStatus(index, 'Processing');
 
-      const response = await axios.post('http://localhost:3000/videos/convert', formData, {
+      const formData = new FormData();
+      formData.append('videoId', file.id);
+      formData.append('format', file.format.toLowerCase());
+
+      await axios.post('http://localhost:3000/videos/convert', formData, {
         headers: {
-          'Content-Type': 'multipart/form-data',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
       });
 
-      console.log('Conversion successful:', response.data);
-      setThumbnailPath(response.data.thumbnailPath);
+      updateFileStatus(index, 'Completed');
     } catch (error) {
       console.error('Error during conversion:', error);
+      updateFileStatus(index, 'Failed');
     }
   };
 
-  const handleRemove = async () => {
-    if (uploadedFile && videoId) {
-      try {
-        const response = await axios.delete(`http://localhost:3000/videos/delete/${videoId}`, {
-          data: { videoPath: thumbnailPath.replace('uploads/thumbnails/', '') }
-        });
+  const handleDownload = (file) => {
+    const downloadUrl = `http://localhost:3000/videos/download/${file.id}`;
+    window.open(downloadUrl, '_blank');
+  };
 
-        console.log('Video deleted:', response.data);
+  const updateFileStatus = (index, status) => {
+    setVideoFiles(prevFiles => {
+      const updatedFiles = [...prevFiles];
+      updatedFiles[index].status = status;
+      return updatedFiles;
+    });
+  };
+
+  const updateFileProgress = (index, progress) => {
+    setVideoFiles(prevFiles => {
+      const updatedFiles = [...prevFiles];
+      updatedFiles[index].progress = progress;
+      return updatedFiles;
+    });
+  };
+
+  const updateFileData = (index, data) => {
+    setVideoFiles(prevFiles => {
+      const updatedFiles = [...prevFiles];
+      updatedFiles[index] = { ...updatedFiles[index], ...data };
+      return updatedFiles;
+    });
+  };
+
+  const handleRemove = async (index) => {
+    const videoToDelete = videoFiles[index];
+
+    if (videoToDelete && videoToDelete.id) {
+      try {
+        await axios.delete(`http://localhost:3000/videos/delete/${videoToDelete.id}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          },
+        });
+        setVideoFiles(prevFiles => prevFiles.filter((_, i) => i !== index));
       } catch (error) {
         console.error('Error deleting video:', error);
       }
+    } else {
+      setVideoFiles(prevFiles => prevFiles.filter((_, i) => i !== index));
     }
-
-    // Reset state after deletion
-    setUploadedFile(null);
-    setThumbnailPath('');
-    setVideoId(null); // Reset videoId
-    setSelectedFormat('MP4');
-    setDuration(0);
-    setFileFormat('');
-    setFileSize(0);
-    setUploadProgress(0);
   };
 
-
-
+  const renderStatus = (file) => {
+    switch (file.status) {
+      case 'Uploading':
+        return (
+          <HStack spacing={2}>
+            <Text color="orange.500">Uploading</Text>
+            <Progress value={file.progress} colorScheme="orange" size="sm" width="100px" />
+          </HStack>
+        );
+      case 'Processing':
+        return <Tag size='lg' borderRadius='full' bg={"orange.500"} color={"white"} rounded={5}><TagLabel>Processing</TagLabel></Tag>;
+      case 'Completed':
+        return <Tag size='lg' borderRadius='full' bg={"blue.500"} color={"white"} rounded={5}><TagLabel>Completed</TagLabel></Tag>;
+      case 'Failed':
+        return <Tag size='lg' borderRadius='full' bg={"red.500"} color={"white"} rounded={5}><TagLabel>Failed</TagLabel></Tag>;
+      default:
+        return <Tag size='lg' borderRadius='full' bg={"orange.500"} color={"white"} rounded={5}><TagLabel>Waiting</TagLabel></Tag>;
+    }
+  };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
 
   return (
-    <Box bg="gray.50" p={8}>
-      {uploadedFile ? (
-        <VStack
-          background="gray.800"
-          rounded={10} p={6}
-          textAlign="left" color="white"
+    <Box bg="gray.50" p={8} width="100%">
+      {(!conversionStarted || videoFiles.length === 0) && (
+        <VStack spacing={4} mt={4}>
+          <Box
+            background="gray.200"
+            rounded={10}
+            px={{ base: "30px", md: "200px" }}
+            py={{ base: "70px", md: "20" }}
+            textAlign="center"
+            borderWidth="4px"
+            borderColor={isDragActive ? "purple.500" : "gray.300"}
+            borderStyle={isDragActive ? "solid" : "dashed"}
+            {...getRootProps()}
+          >
+            <input {...getInputProps()} />
+            <VStack spacing={4}>
+              <Text fontSize="2xl" fontWeight="bold">
+                Convert Your Videos Easily
+              </Text>
+              <Text fontSize="md" color="gray.600">
+                A user-friendly platform for converting your videos to various formats.
+              </Text>
+              <CustomButton leftIcon={FaFileUpload}>
+                Upload Files
+              </CustomButton>
+              <Text fontSize="sm" color="gray.500">
+                Drag & drop files here or click to select files
+              </Text>
+            </VStack>
+          </Box>
+        </VStack>
+      )}
+      {videoFiles.map((file, index) => (
+        <Box
+          key={file.file.name}
+          background="gray.100"
+          rounded={10} p={4} mt={5}
+          textAlign="left"
+          color="black"
           spacing={4}
-          width={{ base: "md", md: "2xl" }}
+          width="100%"
+          boxShadow={"md"}
         >
-          {uploadProgress > 0 && uploadProgress < 100 && (
-            <Progress width="100%" value={uploadProgress} colorScheme="purple" hasStripe isAnimated />
-          )}
-          <Stack direction={{ base: "column", md: "row" }} align={"center"}>
-            {thumbnailPath && (
-              <Image
-                src={`http://localhost:3000/${thumbnailPath}`}
-                alt="Video Thumbnail"
-                boxSize="sm"
-                objectFit="cover"
-                borderRadius="md"
-              />
-            )}
-            <VStack align="start" ml={4}>
-              <Select value={selectedFormat} onChange={handleFormatChange}>
+          <Stack direction={{ base: "column", md: "row" }} align="center" justify="space-between">
+            <HStack align="center">
+              {file.thumbnailPath ? (
+                <Image
+                  src={`http://localhost:3000/${file.thumbnailPath}`}
+                  alt="Video Thumbnail"
+                  boxSize="100px"
+                  objectFit="cover"
+                  borderRadius="md"
+                />
+              ) : (
+                <FaFileVideo size={"25px"} />
+              )}
+              <VStack align={'flex-start'}>
+                <Text fontWeight="bold">{file.file.name}</Text>
+                <Text fontSize={"sm"}>File Format: {file.originalFormat}</Text>
+                <Text fontSize={"sm"}>Size: {Math.round(file.file.size / 1024 / 1024)} MB</Text>
+              </VStack>
+            </HStack>
+            <HStack width={{ base: "100%", md: "50%" }} justify={{ base: "center", md: "end" }}>
+              {renderStatus(file)}
+              <Select
+                width={"40%"}
+                value={file.format}
+                onChange={(e) => {
+                  const newFiles = [...videoFiles];
+                  newFiles[index].format = e.target.value;
+                  setVideoFiles(newFiles);
+                }}
+              >
                 <option value="MP4">MP4</option>
                 <option value="MKV">MKV</option>
                 <option value="WMV">WMV</option>
@@ -142,47 +243,52 @@ const UploadSection = () => {
                 <option value="MOV">MOV</option>
                 <option value="VOB">VOB</option>
               </Select>
-              <Text>File Format: {fileFormat.toUpperCase()}</Text>
-              <Text>Size: {Math.round(fileSize / 1024 / 1024)} MB</Text>
-              <Text>Duration: {formatDuration(duration)}</Text> {/* Updated to mm:ss format */}
-            </VStack>
+              <IconButton
+                aria-label="Remove File"
+                icon={<FaTrashAlt />}
+                colorScheme="red"
+                onClick={() => handleRemove(index)}
+              />
+            </HStack>
           </Stack>
-          <HStack spacing={4}>
-            <CustomButton leftIcon={FaTrashAlt} onClick={handleRemove} bg="gray.500">
-              Remove
-            </CustomButton>
-            <CustomButton leftIcon={FaExchangeAlt} onClick={handleConvert} bg="blue.600">
+        </Box>
+      ))}
+
+      {videoFiles.length > 0 && (
+        <Box display="flex" justifyContent="flex-end">
+          {videoFiles.some(file => file.status === 'WAITING') && (
+            <CustomButton
+              mt={4} px={5}
+              bg={'orange.400'} _hover={{ bg: "orange.500" }}
+              _active={{ bg: "orange.500" }}
+              leftIcon={FaExchangeAlt}
+              onClick={() => {
+                setConversionStarted(true);
+                videoFiles.forEach((file, index) => {
+                  if (file.status === 'WAITING') {
+                    handleUpload(file, index);
+                  }
+                });
+              }}
+            >
               Convert
             </CustomButton>
-          </HStack>
-        </VStack>
-      ) : (
-        <Box
-          background="gray.200"
-          rounded={10}
-          px={{ base: "30px", md: "150px" }}
-          py={{ base: "70px", md: "20" }}
-          textAlign="center"
-          borderWidth="4px"
-          borderColor={isDragActive ? "purple.500" : "gray.300"}
-          borderStyle={isDragActive ? "solid" : "dashed"}
-          {...getRootProps()}
-        >
-          <input {...getInputProps()} />
-          <VStack spacing={4}>
-            <Text fontSize="2xl" fontWeight="bold">
-              Convert Your Videos Easily
-            </Text>
-            <Text fontSize="md" color="gray.600">
-              A user-friendly platform for converting your videos to various formats.
-            </Text>
-            <CustomButton leftIcon={FaFileUpload}>
-              Upload Files
+          )}
+          {videoFiles.some(file => file.status === 'Completed') && (
+            <CustomButton
+              mt={4} px={5}
+              leftIcon={FaDownload}
+              onClick={() => {
+                videoFiles.forEach((file, index) => {
+                  if (file.status === 'Completed') {
+                    handleDownload(file);
+                  }
+                });
+              }}
+            >
+              Download
             </CustomButton>
-            <Text fontSize="sm" color="gray.500">
-              Drag & drop files here or click to select files
-            </Text>
-          </VStack>
+          )}
         </Box>
       )}
     </Box>
