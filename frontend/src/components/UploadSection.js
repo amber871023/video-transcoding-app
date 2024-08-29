@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Box, VStack, Text, Select, Stack, HStack, Image, Progress, IconButton, Tag, TagLabel } from '@chakra-ui/react';
-import { FaFileUpload, FaExchangeAlt, FaTrashAlt, FaDownload, FaChevronDown, FaFileVideo } from 'react-icons/fa';
+import { FaFileUpload, FaExchangeAlt, FaTrashAlt, FaDownload, FaFileVideo } from 'react-icons/fa';
 import CustomButton from './CustomButton';
 import axios from 'axios';
 
@@ -94,7 +94,13 @@ const UploadSection = () => {
 
   const handleDownload = (file) => {
     const downloadUrl = `http://localhost:3000/videos/download/${file.id}`;
-    window.open(downloadUrl, '_blank');
+
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.setAttribute('download', '');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const updateFileStatus = (index, status) => {
@@ -150,13 +156,13 @@ const UploadSection = () => {
           </HStack>
         );
       case 'Processing':
-        return <Tag size='lg' borderRadius='full' bg={"orange.500"} color={"white"} rounded={5}><TagLabel>Processing</TagLabel></Tag>;
+        return <Tag size='lg' borderRadius='full' bg={"orange.500"} color={"white"} ><TagLabel>Processing</TagLabel></Tag>;
       case 'Completed':
-        return <Tag size='lg' borderRadius='full' bg={"blue.500"} color={"white"} rounded={5}><TagLabel>Completed</TagLabel></Tag>;
+        return <Tag size='lg' borderRadius='full' bg={"blue.500"} color={"white"} ><TagLabel>Completed</TagLabel></Tag>;
       case 'Failed':
-        return <Tag size='lg' borderRadius='full' bg={"red.500"} color={"white"} rounded={5}><TagLabel>Failed</TagLabel></Tag>;
+        return <Tag size='lg' borderRadius='full' bg={"red.500"} color={"white"} ><TagLabel>Failed</TagLabel></Tag>;
       default:
-        return <Tag size='lg' borderRadius='full' bg={"orange.500"} color={"white"} rounded={5}><TagLabel>Waiting</TagLabel></Tag>;
+        return <Tag size='lg' borderRadius='full' bg={"orange.500"} color={"white"}><TagLabel>Waiting</TagLabel></Tag>;
     }
   };
 
@@ -225,30 +231,51 @@ const UploadSection = () => {
                 <Text fontSize={"sm"}>Size: {Math.round(file.file.size / 1024 / 1024)} MB</Text>
               </VStack>
             </HStack>
-            <HStack width={{ base: "100%", md: "50%" }} justify={{ base: "center", md: "end" }}>
+            <HStack width={{ base: "100%", md: "50%" }} justify={{ base: "center", md: "end" }} alignContent={"center"}>
               {renderStatus(file)}
-              <Select
-                width={"40%"}
-                value={file.format}
-                onChange={(e) => {
-                  const newFiles = [...videoFiles];
-                  newFiles[index].format = e.target.value;
-                  setVideoFiles(newFiles);
-                }}
-              >
-                <option value="MP4">MP4</option>
-                <option value="MKV">MKV</option>
-                <option value="WMV">WMV</option>
-                <option value="AVI">AVI</option>
-                <option value="MOV">MOV</option>
-                <option value="VOB">VOB</option>
-              </Select>
-              <IconButton
-                aria-label="Remove File"
-                icon={<FaTrashAlt />}
-                colorScheme="red"
-                onClick={() => handleRemove(index)}
-              />
+              {file.status !== 'Completed' && file.status !== 'Uploading' && (
+                <>
+                  <Select
+                    width={"40%"}
+                    value={file.format}
+                    onChange={(e) => {
+                      const newFiles = [...videoFiles];
+                      newFiles[index].format = e.target.value;
+                      setVideoFiles(newFiles);
+                    }}
+                  >
+                    <option value="MP4">MP4</option>
+                    <option value="MKV">MKV</option>
+                    <option value="WMV">WMV</option>
+                    <option value="AVI">AVI</option>
+                    <option value="MOV">MOV</option>
+                    <option value="VOB">VOB</option>
+                  </Select>
+                  <IconButton
+                    aria-label="Remove File"
+                    icon={<FaTrashAlt />}
+                    colorScheme="red"
+                    onClick={() => handleRemove(index)}
+                  />
+                </>
+              )}
+              {file.status === 'Completed' && (
+                <Box display="flex" justifyContent="flex-end">
+                  <CustomButton
+                    px={5} mr={2}
+                    leftIcon={FaDownload}
+                    onClick={() => handleDownload(file)}
+                  >
+                    Download
+                  </CustomButton>
+                  <IconButton
+                    aria-label="Remove File"
+                    icon={<FaTrashAlt />}
+                    colorScheme="red"
+                    onClick={() => handleRemove(index)}
+                  />
+                </Box>
+              )}
             </HStack>
           </Stack>
         </Box>
@@ -272,21 +299,6 @@ const UploadSection = () => {
               }}
             >
               Convert
-            </CustomButton>
-          )}
-          {videoFiles.some(file => file.status === 'Completed') && (
-            <CustomButton
-              mt={4} px={5}
-              leftIcon={FaDownload}
-              onClick={() => {
-                videoFiles.forEach((file, index) => {
-                  if (file.status === 'Completed') {
-                    handleDownload(file);
-                  }
-                });
-              }}
-            >
-              Download
             </CustomButton>
           )}
         </Box>
