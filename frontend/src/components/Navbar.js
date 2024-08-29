@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, HStack, Button, Image, VStack, useDisclosure, IconButton, Collapse, Menu, MenuButton, MenuList, MenuItem, MenuDivider
 } from '@chakra-ui/react';
-import { HamburgerIcon, AddIcon, ExternalLinkIcon, InfoOutlineIcon } from '@chakra-ui/icons';
+import { HamburgerIcon } from '@chakra-ui/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Login from './Login';
 import Register from './Register';

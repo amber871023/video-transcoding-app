@@ -1,10 +1,7 @@
 const jwt = require("jsonwebtoken");
-const crypto = require('crypto');
 
-// Middleware to authorize user
-
-// generate or retrieve a fixed secret key
-const secretKey = crypto.randomBytes(32).toString('hex');
+// Use a fixed secret key (stored in environment variables)
+const secretKey = process.env.JWT_SECRET || 'your-fixed-secret-key'; // Replace with a secure, fixed key
 
 const authorize = (req, res, next) => {
   const authorization = req.headers.authorization;
@@ -20,7 +17,7 @@ const authorize = (req, res, next) => {
     if (decoded.exp < Math.floor(Date.now() / 1000)) {
       return res.status(403).send("Token has expired");
     }
-    req.email = decoded.email;
+    req.user = { id: decoded.id, email: decoded.email }; // Attach user information to request
     next();
   } catch (err) {
     res.status(403).json({ error: true, msg: "Token is not valid", err });

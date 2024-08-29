@@ -35,7 +35,7 @@ const registerUser = async (req, res) => {
     // Generate JWT token
     const expires_in = 60 * 60 * 24 * 30; // 30 days
     const exp = Math.floor(Date.now() / 1000) + expires_in;
-    const token = jwt.sign({ email: newUser.email, exp }, secretKey);
+    const token = jwt.sign({ id: newUser._id, email: newUser.email, username: newUser.username, exp }, secretKey);
 
     res.status(201).json({ error: false, msg: "User registered successfully", username, token });
   } catch (err) {
@@ -61,9 +61,9 @@ const loginUser = async (req, res) => {
       return res.status(401).json({ error: true, msg: "Password incorrect" });
     }
 
-    const expires_in = 60 * 60 * 24;
+    const expires_in = 60 * 60 * 24; // Token expiry time (24 hours)
     const exp = Math.floor(Date.now() / 1000) + expires_in;
-    const token = jwt.sign({ email: user.email, exp }, secretKey);
+    const token = jwt.sign({ id: user._id, email: user.email, username: user.username, exp }, secretKey);
 
     res.json({ token_type: "Bearer", token, expires_in, username: user.username });
   } catch (err) {

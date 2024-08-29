@@ -1,12 +1,12 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Box, Text, Button, VStack, HStack, useToast, Container, Image } from '@chakra-ui/react';
+import { Box, Text, Button, VStack, HStack, useToast, Container, Image, Stack } from '@chakra-ui/react';
 import { useDropzone } from 'react-dropzone';
-import axios from 'axios';
-import { FaFileUpload, FaDownload } from 'react-icons/fa';
+import { FaFileUpload, FaExchangeAlt, FaDownload } from 'react-icons/fa';
 import CustomButton from '../components/CustomButton';
 
 const VideoPage = () => {
   const [videos, setVideos] = useState([]);
+  const [playingVideoId, setPlayingVideoId] = useState(null); // State to track the currently playing video
   const toast = useToast();
 
   const onDrop = useCallback((acceptedFiles) => {
@@ -26,6 +26,7 @@ const VideoPage = () => {
         duration: '3:45',
         format: 'MP4',
         thumbnail: 'https://via.placeholder.com/150?text=Video+1', // Example placeholder image URL
+        videoUrl: 'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4', // Replace with the actual video URL
       },
       {
         _id: '2',
@@ -34,6 +35,7 @@ const VideoPage = () => {
         duration: '5:20',
         format: 'AVI',
         thumbnail: 'https://via.placeholder.com/150?text=Video+2',
+        videoUrl: 'https://www.example.com/video2.avi', // Replace with the actual video URL
       },
       {
         _id: '3',
@@ -42,6 +44,7 @@ const VideoPage = () => {
         duration: '10:10',
         format: 'MOV',
         thumbnail: 'https://via.placeholder.com/150?text=Video+3',
+        videoUrl: 'https://www.example.com/video3.mov', // Replace with the actual video URL
       },
     ];
 
@@ -82,10 +85,16 @@ const VideoPage = () => {
     });
   };
 
+  const handlePlayVideo = (videoId) => {
+    setPlayingVideoId(videoId);
+  };
+
   return (
     <Box bg="gray.50" minH="100vh" p={8}>
       <Container maxW="container.lg" pt={10} pb={20}>
-        <Text fontSize="2xl" fontWeight={"bold"} mb={4}>Your Uploaded Videos:</Text>
+        <Text textAlign={"center"} fontSize={{ base: "xl", md: "2xl" }} fontWeight={"bold"} mb={6}>
+          Your Uploaded Videos:
+        </Text>
         <VStack spacing={4}>
           {videos.length === 0 ? (
             <Box
@@ -97,7 +106,6 @@ const VideoPage = () => {
               {...getRootProps()}
             >
               <input {...getInputProps()} />
-
               <Text fontSize="lg" fontWeight="medium" mb={2}>
                 You have no video upload records yet.
               </Text>
@@ -110,34 +118,48 @@ const VideoPage = () => {
               </Button>
             </Box>
           ) : (
-            <VStack spacing={4} width="100%">
+            <VStack spacing={4} width={{ base: "100%", md: "100%" }}>
               {videos.map((video) => (
                 <Box key={video._id} p={4} shadow="md" borderWidth="1px" borderRadius="md" width="100%" background={'gray.100'}>
-                  <HStack justifyContent="space-between">
-                    <HStack align="start" spacing={4}>
+                  <Stack
+                    direction={playingVideoId === video._id ? 'column' : { base: 'column', md: 'row' }}
+
+                    alignItems={playingVideoId === video._id ? 'center' : 'start'}
+                    spacing={4}
+                  >
+                    {playingVideoId === video._id ? (
+                      <video
+                        src={video.videoUrl}
+                        controls
+                        autoPlay
+                        style={{ borderRadius: 'md', width: '100%' }}
+                      />
+                    ) : (
                       <Image
                         src={video.thumbnail}
                         alt={video.originalName}
-                        boxSize="250px"
+                        boxSize={{ base: "100%", md: "250px" }}
                         objectFit="cover"
                         borderRadius="md"
+                        onClick={() => handlePlayVideo(video._id)}
+                        cursor="pointer"
                       />
-                      <VStack align={"start"}>
-                        <Text fontWeight="bold">{video.originalName}</Text>
-                        <Text>Size: {video.size} MB</Text>
-                        <Text>Duration: {video.duration}</Text>
-                        <Text>File Type: {video.format}</Text>
-                        <HStack spacing={4}>
-                          <Button colorScheme="blue" onClick={() => handleReformat(video._id)}>
-                            Reformat
-                          </Button>
-                          <CustomButton leftIcon={FaDownload} onClick={() => handleDownload(video._id)}>
-                            Download
-                          </CustomButton>
-                        </HStack>
-                      </VStack>
-                    </HStack>
-                  </HStack>
+                    )}
+                    <VStack align={"start"} spacing={4}>
+                      <Text fontWeight="bold" fontSize={{ base: "md", md: "lg" }}>{video.originalName}</Text>
+                      <Text fontSize={{ base: "sm", md: "md" }}>Size: {video.size} MB</Text>
+                      <Text fontSize={{ base: "sm", md: "md" }}>Duration: {video.duration}</Text>
+                      <Text fontSize={{ base: "sm", md: "md" }}>File Type: {video.format}</Text>
+                      <HStack spacing={4} pt={{ base: 2, md: 0 }}>
+                        <CustomButton leftIcon={FaExchangeAlt} size="md" bg="blue.400" boxShadow={"lg"} onClick={() => handleReformat(video._id)}>
+                          Reformat
+                        </CustomButton>
+                        <CustomButton leftIcon={FaDownload} size="md" onClick={() => handleDownload(video._id)}>
+                          Download
+                        </CustomButton>
+                      </HStack>
+                    </VStack>
+                  </Stack>
                 </Box>
               ))}
             </VStack>

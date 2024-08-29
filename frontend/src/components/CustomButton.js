@@ -1,6 +1,5 @@
 import React from 'react';
-import { Button } from '@chakra-ui/react';
-import { Icon } from '@chakra-ui/icons';
+import { Button, Icon } from '@chakra-ui/react';
 
 const CustomButton = ({ leftIcon, children, ...props }) => {
   return (
