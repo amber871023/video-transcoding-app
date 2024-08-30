@@ -38,6 +38,7 @@ const UploadSection = () => {
           status: 'WAITING',
           uploadProgress: 0,
           conversionProgress: 0,
+          convertedFormat: null,
         });
       } else {
         newErrorMessages.push(`${file.name} format is not allowed to convert.`);
@@ -161,6 +162,8 @@ const UploadSection = () => {
 
           if (progress >= 100) {
             updateFileStatus(index, 'Completed');
+            const convertedFormat = file.format.toUpperCase();
+            updateFileData(index, { convertedFormat });
           }
         }
       }
@@ -325,6 +328,9 @@ const UploadSection = () => {
                 <Text fontWeight="bold">{file.file.name}</Text>
                 <Text fontSize={"sm"}>File Format: {file.originalFormat}</Text>
                 <Text fontSize={"sm"}>Size: {Math.round(file.file.size / 1024 / 1024)} MB</Text>
+                {file.convertedFormat && (
+                  <Text fontSize={"sm"}>Converted File Type: {file.convertedFormat}</Text>
+                )}
               </VStack>
             </HStack>
             <HStack width={{ base: "100%", md: "50%" }} justify={{ base: "center", md: "end" }} alignContent={"center"}>

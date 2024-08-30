@@ -50,7 +50,6 @@ const VideoPage = () => {
 
         setVideos(videosWithUrls);
       } catch (error) {
-        console.error('Error fetching videos:', error);
         toast({
           title: 'Error fetching videos.',
           description: 'Please try again later.',
@@ -66,7 +65,6 @@ const VideoPage = () => {
 
   const handleReformat = async () => {
     if (!videoToReformat) {
-      console.error('No video selected for reformatting');
       return;
     }
 
@@ -121,7 +119,6 @@ const VideoPage = () => {
         }
       }
     } catch (error) {
-      console.error('Error during reformatting:', error);
       toast({
         title: 'Error reformatting video.',
         description: 'Please try again.',
@@ -146,7 +143,6 @@ const VideoPage = () => {
   const handlePlayVideo = (videoId) => {
     const video = videos.find(v => v._id === videoId);
     if (video && video.videoUrl) {
-      console.log('Playing video from URL:', video.videoUrl);
       setPlayingVideoId(videoId);
     } else {
       console.error('Video URL not found for ID:', videoId);

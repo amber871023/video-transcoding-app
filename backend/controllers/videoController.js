@@ -230,7 +230,7 @@ exports.reformatVideo = async (req, res) => {
     const inputPath = path.resolve(video.transcodedVideoPath);
     console.log('Input path resolved:', inputPath);
 
-    const outputFilename = `video-${Date.now()}-reformatted.${req.body.format}`;
+    const outputFilename = `video-${Date.now()}-transcoded.${req.body.format}`;
     const outputPath = path.resolve(__dirname, '../transcoded_videos', outputFilename);
     console.log('Output path resolved:', outputPath);
 
