@@ -3,7 +3,7 @@ import {
   Box, HStack, Button, Image, VStack, useDisclosure, IconButton, Collapse, Menu, MenuButton, MenuList, MenuItem, MenuDivider
 } from '@chakra-ui/react';
 import { HamburgerIcon } from '@chakra-ui/icons';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import Login from './Login';
 import Register from './Register';
 import logo from '../assets/logo.png';
@@ -15,7 +15,6 @@ const Navbar = () => {
   const { isOpen, onToggle } = useDisclosure();
   const navigate = useNavigate();
   const location = useLocation();
-
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -56,16 +55,16 @@ const Navbar = () => {
       py={4}
     >
       <HStack justifyContent="space-between">
-        <Button variant="link" color="white" onClick={() => navigate('/')}>
+        <Link to="/">
           <Image src={logo} alt='VITRANSCODING' w={{ base: '180px', md: '200px' }} h={{ base: '40px', md: '42px' }} />
-        </Button>
+        </Link>
 
         {/* Desktop Menu */}
         <HStack spacing={8} display={{ base: 'none', md: 'flex' }}>
           {isLoggedIn ? (
             <>
-              <Button variant="link" color="white" onClick={() => navigate('/')}>Home</Button>
-              <Button variant="link" color="white" onClick={() => navigate('/videos')}>Videos</Button>
+              <Link to="/">Home</Link>
+              <Link to="/videos">Videos</Link>
               <Button variant="link" color="white" onClick={handleLogout}>Log out</Button>
             </>
           ) : (
@@ -91,13 +90,13 @@ const Navbar = () => {
           <MenuList>
             {isLoggedIn ? (
               <>
-                <MenuItem color={'black'} onClick={() => navigate('/')}>
-                  Home
-                </MenuItem>
+                <Link to="/">
+                  <MenuItem color={'black'}>Home</MenuItem>
+                </Link>
                 <MenuDivider />
-                <MenuItem color={'black'} onClick={() => navigate('/videos')}>
-                  Videos
-                </MenuItem>
+                <Link to="/videos">
+                  <MenuItem color={'black'}>Videos</MenuItem>
+                </Link>
                 <MenuDivider />
                 <MenuItem color={'black'} onClick={handleLogout}>
                   Log out
@@ -129,8 +128,12 @@ const Navbar = () => {
         >
           {isLoggedIn ? (
             <>
-              <Button variant="link" color="white" onClick={() => navigate('/')}>Home</Button>
-              <Button variant="link" color="white" onClick={() => navigate('/videos')}>Videos</Button>
+              <Link to="/">
+                <Button variant="link" color="white">Home</Button>
+              </Link>
+              <Link to="/videos">
+                <Button variant="link" color="white">Videos</Button>
+              </Link>
               <Button variant="link" color="white" onClick={handleLogout}>Log out</Button>
             </>
           ) : (

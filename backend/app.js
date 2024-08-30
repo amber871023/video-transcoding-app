@@ -5,6 +5,8 @@ const morgan = require('morgan');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const path = require('path');
+const createError = require('http-errors');
+
 
 const app = express();
 
@@ -29,6 +31,7 @@ const videoRoutes = require('./routes/videoRoutes');
 app.use('/users', userRoutes);
 app.use("/videos", videoRoutes);
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/transcoded_videos', express.static(path.join(__dirname, 'transcoded_videos')));
 
 
 
@@ -47,6 +50,11 @@ app.use(function (req, res, next) {
 app.use((err, req, res, next) => {
   console.error('Server Error:', err);
   res.status(500).json({ message: 'Internal Server Error', error: err.message });
+});
+
+// Catch 404 and forward to error handler
+app.use((req, res, next) => {
+  next(createError(404));
 });
 
 

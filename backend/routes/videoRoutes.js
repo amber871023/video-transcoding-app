@@ -4,7 +4,7 @@ const multer = require('multer');
 const Video = require('../models/Video');
 const { authorize } = require('../middlewares/auth');
 const optionalAuthorize = require('../middlewares/optAuth');
-const { uploadVideo, convertVideo, downloadVideo, deleteVideo, getUserVideos } = require('../controllers/videoController');
+const { uploadVideo, convertVideo, getConversionProgress, downloadVideo, deleteVideo, getUserVideos, reformatVideo } = require('../controllers/videoController');
 const path = require('path');
 
 const storage = multer.diskStorage({
@@ -18,9 +18,10 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage: storage,
-  limits: { fileSize: 200 * 1024 * 1024 }, // 200MB limit
+  limits: { fileSize: 200 * 1024 * 1024 }, // 200MB file size limit
   fileFilter: (req, file, cb) => {
-    const allowedExtensions = /mp4|mkv|avi|mov|wmv/;
+    // Define the allowed file extensions
+    const allowedExtensions = /mp4|mkv|avi|mov|wmv|flv|webm/;
     const allowedMIMETypes = [
       'video/mp4',
       'video/x-matroska', // mkv
@@ -28,18 +29,20 @@ const upload = multer({
       'video/avi',
       'video/quicktime', // mov
       'video/x-ms-wmv', // wmv
+      'video/x-flv', // flv
+      'video/webm', // webm
       'application/octet-stream' // Fallback for cases like this
     ];
 
+    // Extract the file extension and MIME type
     const extname = allowedExtensions.test(path.extname(file.originalname).toLowerCase());
     const mimetype = allowedMIMETypes.includes(file.mimetype);
 
-    // If MIME type is generic (like application/octet-stream), rely on extension
-    if (mimetype || (file.mimetype === 'application/octet-stream' && extname)) {
-      return cb(null, true);
+    // Check if the file extension and MIME type are allowed
+    if (extname && mimetype) {
+      cb(null, true); // Accept the file
     } else {
-      console.error('File rejected due to invalid type:', file.originalname);
-      cb(new Error('Only video files are allowed!'));
+      cb(new Error('Invalid file type. Only MP4, MKV, AVI, MOV, and WMV files are allowed.'));
     }
   }
 });
@@ -47,6 +50,7 @@ const upload = multer({
 
 router.post('/upload', optionalAuthorize, upload.single('video'), uploadVideo);
 router.post('/convert', optionalAuthorize, upload.none(), convertVideo);
+router.post('/reformat/:id', optionalAuthorize, upload.none(), reformatVideo);
 router.delete('/delete/:id', optionalAuthorize, deleteVideo);
 router.get('/download/:id', optionalAuthorize, downloadVideo);
 router.get('/', authorize, getUserVideos);

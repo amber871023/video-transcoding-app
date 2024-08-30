@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Modal, ModalOverlay, ModalContent, ModalHeader, ModalCloseButton, ModalBody, ModalFooter, Button, Input, FormControl, FormLabel, FormErrorMessage, useToast } from '@chakra-ui/react';
 import axios from 'axios';
 
+const baseUrl = "http://localhost:3000";
+
 const Register = ({ isOpen, onClose, onSuccess }) => {
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
@@ -14,7 +16,7 @@ const Register = ({ isOpen, onClose, onSuccess }) => {
     setIsLoading(true);
     setError('');
     try {
-      const response = await axios.post('http://localhost:3000/users/register', { email, username, password });
+      const response = await axios.post(`${baseUrl}/users/register`, { email, username, password });
       const { token } = response.data;
       localStorage.setItem('token', token);
       toast({

@@ -1,13 +1,18 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Box, VStack, Text, Select, Stack, HStack, Image, Progress, IconButton, Tag, TagLabel } from '@chakra-ui/react';
-import { FaFileUpload, FaExchangeAlt, FaTrashAlt, FaDownload, FaFileVideo } from 'react-icons/fa';
+import { Box, VStack, Text, Select, Stack, HStack, Image, Progress, IconButton, Tag, TagLabel, CircularProgress, CircularProgressLabel, Alert, AlertIcon, Button } from '@chakra-ui/react';
+import { FaFileUpload, FaExchangeAlt, FaTrashAlt, FaDownload, FaFileVideo, FaFileMedical } from 'react-icons/fa';
 import CustomButton from './CustomButton';
 import axios from 'axios';
+
+const baseUrl = "http://localhost:3000";
 
 const UploadSection = () => {
   const [videoFiles, setVideoFiles] = useState([]);
   const [conversionStarted, setConversionStarted] = useState(false);
+  const [errorMessages, setErrorMessages] = useState([]);
+
+  const allowedFormats = ['MP4', 'MKV', 'WMV', 'AVI', 'MOV', 'VOB']; // Define allowed formats
 
   useEffect(() => {
     if (videoFiles.length === 0) {
@@ -16,19 +21,31 @@ const UploadSection = () => {
   }, [videoFiles]);
 
   const onDrop = useCallback((acceptedFiles) => {
-    const newVideoFiles = acceptedFiles.map(file => ({
-      file,
-      originalFormat: file.name.split('.').pop().toUpperCase(),
-      thumbnailPath: '',
-      format: 'MP4',
-      size: 0,
-      duration: 0,
-      id: null,
-      status: 'WAITING',
-      progress: 0,
-    }));
+    const newVideoFiles = [];
+    const newErrorMessages = [];
+
+    acceptedFiles.forEach(file => {
+      const fileFormat = file.name.split('.').pop().toUpperCase();
+      if (allowedFormats.includes(fileFormat)) {
+        newVideoFiles.push({
+          file,
+          originalFormat: fileFormat,
+          thumbnailPath: '',
+          format: 'MP4',
+          size: 0,
+          duration: 0,
+          id: null,
+          status: 'WAITING',
+          uploadProgress: 0,
+          conversionProgress: 0,
+        });
+      } else {
+        newErrorMessages.push(`${file.name} format is not allowed to convert.`);
+      }
+    });
 
     setVideoFiles(prevFiles => [...prevFiles, ...newVideoFiles]);
+    setErrorMessages(newErrorMessages);
   }, []);
 
   const handleUpload = async (file, index) => {
@@ -38,13 +55,13 @@ const UploadSection = () => {
 
       updateFileStatus(index, 'Uploading');
 
-      const response = await axios.post('http://localhost:3000/videos/upload', formData, {
+      const response = await axios.post(`${baseUrl}/videos/upload`, formData, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
         onUploadProgress: (progressEvent) => {
           const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-          updateFileProgress(index, percentCompleted);
+          updateFileUploadProgress(index, percentCompleted);
         },
       });
 
@@ -66,9 +83,42 @@ const UploadSection = () => {
     }
   };
 
+  const updateFileUploadProgress = (index, progress) => {
+    setVideoFiles(prevFiles => {
+      if (!prevFiles[index]) {
+        console.error(`File at index ${index} is undefined`);
+        return prevFiles;
+      }
+      const updatedFiles = [...prevFiles];
+      updatedFiles[index].uploadProgress = progress;
+      return updatedFiles;
+    });
+  };
+
+  const updateFileConversionProgress = (index, progress) => {
+    if (progress < 0 || progress > 100) {
+      console.error(`Invalid progress value: ${progress}`);
+      return;
+    }
+    setVideoFiles(prevFiles => {
+      if (!prevFiles[index]) {
+        console.error(`File at index ${index} is undefined`);
+        return prevFiles;
+      }
+      const updatedFiles = [...prevFiles];
+      updatedFiles[index].conversionProgress = progress;
+      return updatedFiles;
+    });
+  };
+
   const handleConvert = async (file, index) => {
     if (!file.id) {
       console.error('Cannot convert without a video ID.');
+      return;
+    }
+
+    if (!videoFiles[index]) {
+      console.error(`No video file found at index ${index}`);
       return;
     }
 
@@ -79,13 +129,41 @@ const UploadSection = () => {
       formData.append('videoId', file.id);
       formData.append('format', file.format.toLowerCase());
 
-      await axios.post('http://localhost:3000/videos/convert', formData, {
+      const response = await fetch(`${baseUrl}/videos/convert`, {
+        method: 'POST',
+        body: formData,
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
+        }
       });
 
-      updateFileStatus(index, 'Completed');
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+
+      let done = false;
+
+      while (!done) {
+        const { value, done: readerDone } = await reader.read();
+        done = readerDone;
+        const chunk = decoder.decode(value, { stream: true });
+
+        // Strip the 'data: ' prefix if it exists
+        const cleanedChunk = chunk.trim().replace(/^data:\s*/, '');
+
+        const progress = Number(cleanedChunk);
+
+        if (!isNaN(progress)) {
+          updateFileConversionProgress(index, progress);
+
+          if (progress >= 100) {
+            updateFileStatus(index, 'Completed');
+          }
+        }
+      }
     } catch (error) {
       console.error('Error during conversion:', error);
       updateFileStatus(index, 'Failed');
@@ -93,7 +171,7 @@ const UploadSection = () => {
   };
 
   const handleDownload = (file) => {
-    const downloadUrl = `http://localhost:3000/videos/download/${file.id}`;
+    const downloadUrl = `${baseUrl}/videos/download/${file.id}`;
 
     const link = document.createElement('a');
     link.href = downloadUrl;
@@ -105,16 +183,12 @@ const UploadSection = () => {
 
   const updateFileStatus = (index, status) => {
     setVideoFiles(prevFiles => {
+      if (!prevFiles[index]) {
+        console.error(`File at index ${index} is undefined`);
+        return prevFiles;
+      }
       const updatedFiles = [...prevFiles];
       updatedFiles[index].status = status;
-      return updatedFiles;
-    });
-  };
-
-  const updateFileProgress = (index, progress) => {
-    setVideoFiles(prevFiles => {
-      const updatedFiles = [...prevFiles];
-      updatedFiles[index].progress = progress;
       return updatedFiles;
     });
   };
@@ -132,7 +206,7 @@ const UploadSection = () => {
 
     if (videoToDelete && videoToDelete.id) {
       try {
-        await axios.delete(`http://localhost:3000/videos/delete/${videoToDelete.id}`, {
+        await axios.delete(`${baseUrl}/videos/delete/${videoToDelete.id}`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`,
           },
@@ -152,17 +226,29 @@ const UploadSection = () => {
         return (
           <HStack spacing={2}>
             <Text color="orange.500">Uploading</Text>
-            <Progress value={file.progress} colorScheme="orange" size="sm" width="100px" />
+            <Progress value={file.uploadProgress} colorScheme="orange" size="sm" width="100px" />
           </HStack>
         );
       case 'Processing':
-        return <Tag size='lg' borderRadius='full' bg={"orange.500"} color={"white"} ><TagLabel>Processing</TagLabel></Tag>;
+        return (
+          <HStack spacing={2}>
+            <CircularProgress
+              value={file.conversionProgress}
+              color="blue.500"
+              size="40px"
+              thickness="8px"
+            >
+              <CircularProgressLabel>{`${file.conversionProgress}%`}</CircularProgressLabel>
+            </CircularProgress>
+            <Text color="blue.500">Converting..</Text>
+          </HStack>
+        );
       case 'Completed':
-        return <Tag size='lg' borderRadius='full' bg={"blue.500"} color={"white"} ><TagLabel>Completed</TagLabel></Tag>;
+        return <Tag size='lg' borderRadius='full' bg={"green.500"} color={"white"} ><TagLabel>Completed</TagLabel></Tag>;
       case 'Failed':
         return <Tag size='lg' borderRadius='full' bg={"red.500"} color={"white"} ><TagLabel>Failed</TagLabel></Tag>;
       default:
-        return <Tag size='lg' borderRadius='full' bg={"orange.500"} color={"white"}><TagLabel>Waiting</TagLabel></Tag>;
+        return <Tag size='lg' borderRadius='full' bg={"yellow.400"} color={"white"}><TagLabel>Waiting</TagLabel></Tag>;
     }
   };
 
@@ -201,6 +287,16 @@ const UploadSection = () => {
           </Box>
         </VStack>
       )}
+      {errorMessages.length > 0 && (
+        <Box mt={4}>
+          {errorMessages.map((message, index) => (
+            <Alert key={index} status="error">
+              <AlertIcon />
+              {message}
+            </Alert>
+          ))}
+        </Box>
+      )}
       {videoFiles.map((file, index) => (
         <Box
           key={file.file.name}
@@ -216,7 +312,7 @@ const UploadSection = () => {
             <HStack align="center">
               {file.thumbnailPath ? (
                 <Image
-                  src={`http://localhost:3000/${file.thumbnailPath}`}
+                  src={`${baseUrl}/${file.thumbnailPath}`}
                   alt="Video Thumbnail"
                   boxSize="100px"
                   objectFit="cover"
@@ -245,10 +341,12 @@ const UploadSection = () => {
                     }}
                   >
                     <option value="MP4">MP4</option>
-                    <option value="MKV">MKV</option>
-                    <option value="WMV">WMV</option>
-                    <option value="AVI">AVI</option>
+                    <option value="FLV">FLV</option>
                     <option value="MOV">MOV</option>
+                    {/* <option value="MKV">MKV</option> */}
+                    <option value="AVI">AVI</option>
+                    <option value="WEBM">WEBM</option>
+                    {/* <option value="WMV">WMV</option> */}
                     <option value="VOB">VOB</option>
                   </Select>
                   <IconButton
@@ -280,20 +378,31 @@ const UploadSection = () => {
           </Stack>
         </Box>
       ))}
+      {conversionStarted && (
+        <Box display="flex" justifyContent="flex-end" mt={5}>
+          <Button
+            px={5} mr={2}
+            colorScheme='gray'
+            leftIcon={FaFileMedical}
+            onClick={() => setConversionStarted(false)}
+          >
+            Convert other videos
+          </Button>
+        </Box>
+      )}
 
       {videoFiles.length > 0 && (
         <Box display="flex" justifyContent="flex-end">
           {videoFiles.some(file => file.status === 'WAITING') && (
             <CustomButton
               mt={4} px={5}
-              bg={'orange.400'} _hover={{ bg: "orange.500" }}
-              _active={{ bg: "orange.500" }}
               leftIcon={FaExchangeAlt}
               onClick={() => {
                 setConversionStarted(true);
                 videoFiles.forEach((file, index) => {
                   if (file.status === 'WAITING') {
                     handleUpload(file, index);
+                    setErrorMessages('');
                   }
                 });
               }}
