@@ -5,7 +5,8 @@ import { FaFileUpload, FaExchangeAlt, FaTrashAlt, FaDownload, FaFileVideo, FaFil
 import CustomButton from './CustomButton';
 import axios from 'axios';
 
-const baseUrl = "http://localhost:3000";
+// const baseUrl = "http://localhost:3001";
+const baseUrl = "http://3.25.117.203:3001";
 
 const UploadSection = () => {
   const [videoFiles, setVideoFiles] = useState([]);
@@ -229,7 +230,7 @@ const UploadSection = () => {
         return (
           <HStack spacing={2}>
             <Text color="orange.500">Uploading</Text>
-            <Progress value={file.uploadProgress} colorScheme="orange" size="sm" width="100px" />
+            <Progress hasStripe value={file.uploadProgress} colorScheme="orange" size="sm" width="100px" />
           </HStack>
         );
       case 'Processing':

@@ -61,11 +61,9 @@ exports.uploadVideo = async (req, res) => {
 
     // Save the video to the database
     const savedVideo = await newVideo.save();
-    console.log('Video saved to database:', savedVideo);
     return res.json(savedVideo);
 
   } catch (err) {
-    console.error('Error processing video upload:', err);
     return res.status(500).json({ message: 'Error processing video upload.', error: err.message });
   }
 };
@@ -105,12 +103,10 @@ exports.convertVideo = async (req, res) => {
     const ffmpegProcess = ffmpeg(video.originalVideoPath)
       .output(outputPath)
       .on('start', (commandLine) => {
-        // console.log(`ffmpeg process started: ${commandLine}`);
       })
       .on('codecData', (data) => {
         const durationParts = data.duration.split(':');
         totalDuration = parseFloat(durationParts[0]) * 3600 + parseFloat(durationParts[1]) * 60 + parseFloat(durationParts[2]);
-        // console.log(`Total duration: ${totalDuration} seconds`);
       })
       .on('progress', (progress) => {
         const timeParts = progress.timemark.split(':');
@@ -125,14 +121,12 @@ exports.convertVideo = async (req, res) => {
         }
       })
       .on('end', async () => {
-        console.log('ffmpeg process completed');
-        video.transcodedVideoPath = outputPath;
+        video.transcodedVideoPath = outputPath;//fmpeg process completed
         await video.save();
         res.write('data: 100\n\n');
         res.end();
       })
       .on('error', (err) => {
-        console.error('Error during transcoding:', err);
         res.write('data: error\n\n');
         res.end();
       });
@@ -144,7 +138,6 @@ exports.convertVideo = async (req, res) => {
     ffmpegProcess.run();
 
   } catch (err) {
-    console.error('Error during transcoding:', err);
     return res.status(500).json({ message: 'Error during transcoding.', error: err });
   }
 };
@@ -158,13 +151,11 @@ exports.downloadVideo = async (req, res) => {
 
     res.download(video.transcodedVideoPath, err => {
       if (err) {
-        console.error('Error during file download:', err);
         return res.status(500).json({ message: 'Error during file download.', error: err });
       }
     });
 
   } catch (err) {
-    console.error('Error finding video:', err);
     return res.status(500).json({ message: 'Error finding video.', error: err });
   }
 };
@@ -228,15 +219,12 @@ exports.reformatVideo = async (req, res) => {
     }
 
     const inputPath = path.resolve(video.transcodedVideoPath);
-    console.log('Input path resolved:', inputPath);
 
     const outputFilename = `video-${Date.now()}-transcoded.${req.body.format}`;
     const outputPath = path.resolve(__dirname, '../transcoded_videos', outputFilename);
-    console.log('Output path resolved:', outputPath);
 
     if (!fs.existsSync(path.dirname(outputPath))) {
       fs.mkdirSync(path.dirname(outputPath), { recursive: true });
-      console.log('Created transcoded videos directory:', path.dirname(outputPath));
     }
 
     // Set headers for Server-Sent Events (SSE)
@@ -251,12 +239,10 @@ exports.reformatVideo = async (req, res) => {
       .toFormat(req.body.format)
       .output(outputPath)
       .on('start', (commandLine) => {
-        console.log('ffmpeg process started:', commandLine);
       })
       .on('codecData', (data) => {
         const durationParts = data.duration.split(':');
         totalDuration = parseFloat(durationParts[0]) * 3600 + parseFloat(durationParts[1]) * 60 + parseFloat(durationParts[2]);
-        console.log(`Total duration: ${totalDuration} seconds`);
       })
       .on('progress', (progress) => {
         const timeParts = progress.timemark.split(':');
@@ -266,20 +252,16 @@ exports.reformatVideo = async (req, res) => {
         if (percentComplete > lastProgress) {
           res.write(`data: ${percentComplete}\n\n`);
           lastProgress = percentComplete;
-          console.log(`Progress: ${percentComplete}%`);
         }
       })
       .on('end', async () => {
-        console.log('ffmpeg process completed');
-        video.transcodedVideoPath = outputPath;
+        video.transcodedVideoPath = outputPath;//ffmpeg process completed
         await video.save();
 
         res.write('data: 100\n\n');
-        res.end();
-        console.log('Reformatting complete, response sent.');
+        res.end(); //Reformatting complete
       })
       .on('error', (err) => {
-        console.error('Error during reformatting:', err.message);
         res.write(`data: error\n\n`);
         res.end();
       });

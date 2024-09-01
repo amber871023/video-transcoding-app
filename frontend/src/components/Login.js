@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Modal, ModalOverlay, ModalContent, ModalHeader, ModalCloseButton, ModalBody, ModalFooter, Button, Input, FormControl, FormLabel, FormErrorMessage, useToast } from '@chakra-ui/react';
 import axios from 'axios';
 
-const baseUrl = "http://localhost:3000";
+// const baseUrl = "http://localhost:3001";
+const baseUrl = "http://3.25.117.203:3001";
 const Login = ({ isOpen, onClose, onSuccess }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -23,6 +24,8 @@ const Login = ({ isOpen, onClose, onSuccess }) => {
         duration: 5000,
         isClosable: true,
       });
+      setEmail('');
+      setPassword('');
       onSuccess();
     } catch (error) {
       setError('Invalid email or password.');

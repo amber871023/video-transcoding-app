@@ -20,12 +20,13 @@ mongoose.connect(mongoDB)
 // Middlewares
 app.use(morgan('dev'));
 app.use(cors({
-  origin: 'http://localhost:3001' // Replace with your frontend URL
+  // origin: 'http://localhost:3000',// Replace with your frontend URL
+  credentials: true,
+  origin: 'http://3.25.117.203:3000'
 })); app.use(bodyParser.json());
 app.use(express.json());
 
 // Routes
-//app.get('/', (req, res) => res.send('Video Transcoding API is running...'));
 const userRoutes = require('./routes/userRoutes');
 const videoRoutes = require('./routes/videoRoutes');
 app.use('/users', userRoutes);
@@ -33,10 +34,13 @@ app.use("/videos", videoRoutes);
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/transcoded_videos', express.static(path.join(__dirname, 'transcoded_videos')));
 
+app.get('/', (req, res) => {
+  res.send('Hello, world!');
+});
 
 
 // Start server
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 app.timeout = 1200000; //Increase server timeout 20 minutes
 
