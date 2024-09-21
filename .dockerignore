@@ -1,0 +1,12 @@
+node_modules
+npm - debug.log
+Dockerfile
+  .dockerignore
+frontend / node_modules
+frontend /.env
+backend / node_modules
+backend /.env
+test / node_modules
+uploads
+mongodata /
+

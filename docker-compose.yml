@@ -1,0 +1,31 @@
+version: "3.8"
+
+services:
+  frontend:
+    image: 901444280953.dkr.ecr.ap-southeast-2.amazonaws.com/n11422807a1:frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+  backend:
+    image: 901444280953.dkr.ecr.ap-southeast-2.amazonaws.com/n11422807a1:backend
+    ports:
+      - "3001:3001"
+    environment:
+      PORT: 3001
+      MONGODB_URI: mongodb://mongo:27017/Vitrascoding
+      JWT_SECRET: Ai^4;+<8l}ua$/\+1P6{j3s12L/1iaGL
+    depends_on:
+      - mongo
+
+  mongo:
+    image: mongo:latest
+    container_name: mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./mongodata:/data/db
+
+volumes:
+  mongo-data:

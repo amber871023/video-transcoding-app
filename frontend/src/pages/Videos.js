@@ -16,7 +16,8 @@ const formatDuration = (durationInSeconds) => {
   return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 };
 
-const baseUrl = "http://localhost:3000";
+// const baseUrl = "http://localhost:3001";
+const baseUrl = "http://3.25.117.203:3001";
 
 const VideoPage = () => {
   const [videos, setVideos] = useState([]);
@@ -34,12 +35,13 @@ const VideoPage = () => {
   useEffect(() => {
     const fetchVideos = async () => {
       try {
-        const response = await axios.get(`${baseUrl}/videos`, {
+        console.log('Token:', localStorage.getItem('token'));
+
+        const response = await axios.get(`${baseUrl}/videos/`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`,
           },
         });
-
         const videosWithUrls = response.data.map(video => {
           const filename = video.transcodedVideoPath.split('/').pop();
           return {
@@ -274,7 +276,7 @@ const VideoPage = () => {
                       ) : (
                         <Image
                           src={video.thumbnailPath ? `${baseUrl}/${video.thumbnailPath}` : video.thumbnail}
-                          alt={video.originalName}
+                          alt={video.title}
                           boxSize={{ base: "100%", md: "250px" }}
                           objectFit="cover"
                           borderRadius="md"
@@ -284,7 +286,7 @@ const VideoPage = () => {
                       )}
                       <Stack direction={playingVideoId === video._id ? { base: 'column', md: 'row' } : 'column'} align={"flex-start"} justifyContent={"space-between"}>
                         <VStack align={"flex-start"}>
-                          <Text fontWeight="bold" fontSize={{ base: "md", md: "lg" }}>{video.originalName}</Text>
+                          <Text fontWeight="bold" fontSize={{ base: "md", md: "lg" }}>{video.title}</Text>
                           <Text fontSize={{ base: "sm", md: "md" }}>Size: {Math.round(video.size / 1024 / 1024)} MB</Text>
                           <Text fontSize={{ base: "sm", md: "md" }}>Duration: {formatDuration(video.duration)}</Text>
                           <Text fontSize={{ base: "sm", md: "md" }}>Original File Type: {video.format.toUpperCase()}</Text>
