@@ -14,7 +14,6 @@ const optAuth = (req, res, next) => {
       const decoded = jwt.verify(token, secretKey);
       if (decoded.exp >= Math.floor(Date.now() / 1000)) {
         req.user = { id: decoded.id, email: decoded.email, username: decoded.username };
-        console.log(req.user);
       }
     } catch (err) {
       console.log("Token is not valid:", err.message);

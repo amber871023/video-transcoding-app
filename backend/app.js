@@ -1,28 +1,110 @@
 require('dotenv').config();
 const express = require('express');
-const mongoose = require('mongoose');
+const DynamoDB = require('@aws-sdk/client-dynamodb');
+const DynamoDBLib = require('@aws-sdk/lib-dynamodb');
+const { DynamoDBClient, CreateTableCommand, ListTablesCommand } = require('@aws-sdk/client-dynamodb');
 const morgan = require('morgan');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const path = require('path');
 const createError = require('http-errors');
 
-
 const app = express();
+// Set up DynamoDB clients
+const client = new DynamoDB.DynamoDBClient({ region: 'ap-southeast-2' });
+const docClient = DynamoDBLib.DynamoDBDocumentClient.from(client);
+console.log('DynamoDB configured successfully');
 
-const mongoDB = process.env.MONGODB_URI;
+// Function to check if a table exists
+async function tableExists(tableName) {
+  try {
+    const data = await client.send(new ListTablesCommand({}));
+    return data.TableNames.includes(tableName);
+  } catch (error) {
+    console.error('Error checking table existence:', error);
+    return false;
+  }
+}
 
-// MongoDB connection
-mongoose.connect(mongoDB)
-  .then(() => console.log("MongoDB connected"))
-  .catch(err => console.log(`MongoDB connection err: ${err.message}`));
+// Function to create the User table
+async function createUserTable() {
+  const tableName = "n11422807-users";
+  if (await tableExists(tableName)) {
+    console.log(`Table ${tableName} already exists.`);
+    return;
+  }
+
+  const command = new CreateTableCommand({
+    TableName: tableName,
+    AttributeDefinitions: [
+      { AttributeName: 'qut-username', AttributeType: 'S' },
+      { AttributeName: 'userId', AttributeType: 'S' },
+    ],
+    KeySchema: [
+      { AttributeName: 'qut-username', KeyType: 'HASH' },
+      { AttributeName: 'userId', KeyType: 'RANGE' },
+    ],
+    ProvisionedThroughput: {
+      ReadCapacityUnits: 1,
+      WriteCapacityUnits: 1,
+    },
+  });
+
+  try {
+    const response = await client.send(command);
+    console.log(`Create User Table command response:`, response);
+  } catch (error) {
+    console.error('Error creating User table:', error);
+  }
+}
+
+// Function to create the Video table
+async function createVideoTable() {
+  const tableName = "n11422807-videos";
+  if (await tableExists(tableName)) {
+    console.log(`Table ${tableName} already exists.`);
+    return;
+  }
+
+  const command = new CreateTableCommand({
+    TableName: tableName,
+    AttributeDefinitions: [
+      { AttributeName: 'qut-username', AttributeType: 'S' },
+      { AttributeName: 'videoId', AttributeType: 'S' },
+    ],
+    KeySchema: [
+      { AttributeName: 'qut-username', KeyType: 'HASH' },
+      { AttributeName: 'videoId', KeyType: 'RANGE' },
+    ],
+    ProvisionedThroughput: {
+      ReadCapacityUnits: 1,
+      WriteCapacityUnits: 1,
+    },
+  });
+
+  try {
+    const response = await client.send(command);
+    console.log(`Create Video Table command response:`, response);
+  } catch (error) {
+    console.error('Error creating Video table:', error);
+  }
+}
+
+// Main function to create both tables
+async function createTables() {
+  await createUserTable();
+  await createVideoTable();
+}
+
+createTables();
+
 
 // Middlewares
 app.use(morgan('dev'));
 app.use(cors({
-  // origin: 'http://localhost:3000',// Replace with your frontend URL
+  origin: 'http://localhost:3000',// Replace with your frontend URL
   credentials: true,
-  origin: 'http://3.25.117.203:3000'
+  // origin: 'http://3.25.117.203:3000'
 })); app.use(bodyParser.json());
 app.use(express.json());
 
