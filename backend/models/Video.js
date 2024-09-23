@@ -55,16 +55,19 @@ async function getVideoById(videoId) {
 
 // Get Videos by User ID
 async function getVideosByUserId(userId) {
+  // Query command for fetching videos by userId
   const command = new DynamoDBLib.QueryCommand({
     TableName: videoTableName,
-    IndexName: 'userId-index',
-    KeyConditionExpression: '#userId = :userId',
+    KeyConditionExpression: '#qutUsername = :qutUsername', // Matching the partition key
+    FilterExpression: '#userId = :userId', // Filtering by userId
     ExpressionAttributeNames: {
-      '#userId': 'userId',
+      '#qutUsername': 'qut-username', // Define partition key
+      '#userId': 'userId', // Define filter key
     },
     ExpressionAttributeValues: {
-      ':userId': userId,
-    }
+      ':qutUsername': process.env.QUT_USERNAME, // Value for partition key
+      ':userId': userId, // Value for filter
+    },
   });
 
   try {

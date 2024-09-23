@@ -203,7 +203,6 @@ const UploadSection = () => {
     }
   };
 
-
   const updateFileStatus = (index, status) => {
     setVideoFiles(prevFiles => {
       if (!prevFiles[index]) {

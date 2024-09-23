@@ -3,7 +3,7 @@ import {
   Box, Text, Button, VStack, HStack, useToast, Container, Image, Stack,
   IconButton, AlertDialog, AlertDialogBody, AlertDialogFooter, AlertDialogHeader,
   AlertDialogContent, AlertDialogOverlay, Modal, ModalOverlay, ModalContent,
-  ModalHeader, ModalFooter, ModalBody, ModalCloseButton, Select, Progress, CircularProgress, CircularProgressLabel
+  ModalHeader, ModalFooter, ModalBody, ModalCloseButton, Select, CircularProgress, CircularProgressLabel
 } from '@chakra-ui/react';
 import { FaHome, FaExchangeAlt, FaDownload, FaTrash } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
@@ -32,36 +32,32 @@ const VideoPage = () => {
   const toast = useToast();
   const navigate = useNavigate();
 
+  const fetchVideos = async () => {
+    try {
+      const response = await axios.get(`${baseUrl}/videos/`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+      const videosWithUrls = response.data.map(video => {
+        const filename = video.transcodedVideoPath.split('/').pop();
+        return {
+          ...video,
+          videoUrl: `${baseUrl}/transcoded_videos/${filename}`
+        };
+      });
+      setVideos(videosWithUrls);
+    } catch (error) {
+      toast({
+        title: 'Error fetching videos.',
+        description: 'Please try again later.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    }
+  };
   useEffect(() => {
-    const fetchVideos = async () => {
-      try {
-        console.log('Token:', localStorage.getItem('token'));
-
-        const response = await axios.get(`${baseUrl}/videos/`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          },
-        });
-        const videosWithUrls = response.data.map(video => {
-          const filename = video.transcodedVideoPath.split('/').pop();
-          return {
-            ...video,
-            videoUrl: `${baseUrl}/transcoded_videos/${filename}`
-          };
-        });
-
-        setVideos(videosWithUrls);
-      } catch (error) {
-        toast({
-          title: 'Error fetching videos.',
-          description: 'Please try again later.',
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-        });
-      }
-    };
-
     fetchVideos();
   }, [toast]);
 
@@ -70,7 +66,7 @@ const VideoPage = () => {
       return;
     }
 
-    setConversionProgress(prev => ({ ...prev, [videoToReformat]: 0 }));
+    setConversionProgress((prev) => ({ ...prev, [videoToReformat]: 0 }));
 
     try {
       // Send the POST request to initiate the reformatting process
@@ -105,7 +101,7 @@ const VideoPage = () => {
 
         if (!isNaN(progress)) {
           // Update the progress state
-          setConversionProgress(prev => ({ ...prev, [videoToReformat]: progress }));
+          setConversionProgress((prev) => ({ ...prev, [videoToReformat]: progress }));
 
           // Check if the conversion is completed
           if (progress >= 100) {
@@ -117,6 +113,9 @@ const VideoPage = () => {
               isClosable: true,
             });
             closeReformatDialog();
+
+            // Refresh the video list after successful reformatting
+            await fetchVideos();
           }
         }
       }
@@ -131,19 +130,51 @@ const VideoPage = () => {
     }
   };
 
-  const handleDownload = (videoId) => {
-    const downloadUrl = `${baseUrl}/videos/download/${videoId}`;
 
-    const link = document.createElement('a');
-    link.href = downloadUrl;
-    link.setAttribute('download', '');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleDownload = async (videoId) => {
+    try {
+      const downloadUrl = `${baseUrl}/videos/download/${videoId}`;
+
+      const response = await fetch(downloadUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to download the video. Status: ${response.status}`);
+      }
+
+      // Convert the response to a Blob object
+      const blob = await response.blob();
+
+      const downloadLink = URL.createObjectURL(blob);
+
+      const link = document.createElement('a');
+      link.href = downloadLink;
+      link.setAttribute('download', 'downloaded_video.mp4');
+      document.body.appendChild(link);
+      link.click();
+
+
+      document.body.removeChild(link);
+      URL.revokeObjectURL(downloadLink);
+    } catch (error) {
+      console.error('Download failed:', error);
+      toast({
+        title: 'Download Error',
+        description: 'Failed to download the video. Please try again later.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    }
   };
 
+
   const handlePlayVideo = (videoId) => {
-    const video = videos.find(v => v._id === videoId);
+    const video = videos.find(v => v.videoId === videoId);
     if (video && video.videoUrl) {
       setPlayingVideoId(videoId);
     } else {
@@ -168,7 +199,7 @@ const VideoPage = () => {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
       });
-      setVideos(videos.filter(video => video._id !== videoToDelete));
+      setVideos(videos.filter(video => video.videoId !== videoToDelete));
       toast({
         title: 'Video deleted successfully.',
         status: 'success',
@@ -200,7 +231,7 @@ const VideoPage = () => {
   };
 
   return (
-    <Box bg="gray.50" minH="100vh" p={8}>
+    <Box bg="gray.50" minH="84vh" p={8}>
       <Container maxW="container.lg" pt={10} pb={20}>
         <Text textAlign={"center"} fontSize={{ base: "xl", md: "2xl" }} fontWeight={"bold"} mb={6}>
           Your Uploaded Videos:
@@ -239,21 +270,21 @@ const VideoPage = () => {
                   : null;
 
                 return (
-                  <Box key={video._id} p={4} shadow="md" borderWidth="1px" borderRadius="md" width="100%" background={'gray.100'} position="relative">
+                  <Box key={video.videoId} p={4} shadow="md" borderWidth="1px" borderRadius="md" width="100%" background={'gray.100'} position="relative">
                     <IconButton
                       icon={<FaTrash />}
                       color={"red.400"}
                       position="absolute"
                       top="10px"
                       right="10px"
-                      onClick={() => openDeleteDialog(video._id)}
+                      onClick={() => openDeleteDialog(video.videoId)}
                     />
                     <Stack
-                      direction={playingVideoId === video._id ? 'column' : { base: 'column', md: 'row' }}
-                      alignItems={playingVideoId === video._id ? 'space-between' : 'space-between'}
+                      direction={playingVideoId === video.videoId ? 'column' : { base: 'column', md: 'row' }}
+                      alignItems={playingVideoId === video.videoId ? 'space-between' : 'space-between'}
                       spacing={4}
                     >
-                      {playingVideoId === video._id ? (
+                      {playingVideoId === video.videoId ? (
                         <Box
                           width="100%"
                           maxWidth="600px"
@@ -280,11 +311,11 @@ const VideoPage = () => {
                           boxSize={{ base: "100%", md: "250px" }}
                           objectFit="cover"
                           borderRadius="md"
-                          onClick={() => handlePlayVideo(video._id)}
+                          onClick={() => handlePlayVideo(video.videoId)}
                           cursor="pointer"
                         />
                       )}
-                      <Stack direction={playingVideoId === video._id ? { base: 'column', md: 'row' } : 'column'} align={"flex-start"} justifyContent={"space-between"}>
+                      <Stack direction={playingVideoId === video.videoId ? { base: 'column', md: 'row' } : 'column'} align={"flex-start"} justifyContent={"space-between"}>
                         <VStack align={"flex-start"}>
                           <Text fontWeight="bold" fontSize={{ base: "md", md: "lg" }}>{video.title}</Text>
                           <Text fontSize={{ base: "sm", md: "md" }}>Size: {Math.round(video.size / 1024 / 1024)} MB</Text>
@@ -295,10 +326,10 @@ const VideoPage = () => {
                           )}
                         </VStack>
                         <HStack spacing={4} pt={{ base: 2, md: 0 }} alignSelf={{ base: "center", md: "end" }}>
-                          <CustomButton leftIcon={FaExchangeAlt} size="md" bg="blue.400" boxShadow={"lg"} onClick={() => openReformatDialog(video._id)}>
+                          <CustomButton leftIcon={FaExchangeAlt} size="md" bg="blue.400" boxShadow={"lg"} onClick={() => openReformatDialog(video.videoId)}>
                             Reformat
                           </CustomButton>
-                          <CustomButton leftIcon={FaDownload} size="md" onClick={() => handleDownload(video._id)}>
+                          <CustomButton leftIcon={FaDownload} size="md" onClick={() => handleDownload(video.videoId)}>
                             Download
                           </CustomButton>
                         </HStack>
