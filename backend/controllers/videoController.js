@@ -2,7 +2,7 @@ const path = require('path');
 const fs = require('fs');
 const ffmpeg = require('fluent-ffmpeg');
 const Video = require('../models/Video');
-const { putObject, getObject} = require('../services/S3');
+const { putObject, getObject, getURL} = require('../services/S3');
 const { PassThrough } = require('stream');
 const { createVideo, getVideoById, getVideosByUserId, updateVideoTranscodedPath, deleteVideoRecord } = require('../models/Video');
 const { v4: uuidv4 } = require('uuid');
@@ -13,95 +13,88 @@ exports.uploadVideo = async (req, res) => {
     if (!req.file || !req.file.buffer) {
       return res.status(400).json({ message: 'No file uploaded.' });
     }
-
-    // const videoPath = path.join(__dirname, '..', req.file.path);
-    const format = path.extname(req.file.originalname).substring(1);
     
     // Upload video directly to S3 using the buffer from req.file
     const videoBuffer = req.file.buffer;
     const videoKey = `uploads/${Date.now()}_${req.file.originalname}`;
     await putObject(videoKey, videoBuffer);
 
-    const videoData = await getObject(videoKey);
+    const vidData = await getObject(videoKey);
 
     // Extract video metadata
     const metadata = await new Promise((resolve, reject) => {
-      ffmpeg(videoData.Body)
+      ffmpeg(vidData.Body)
       .ffprobe( (err, metadata) => {
         if (err) {
+          console.log('here');
           return reject(err);
         }
         resolve(metadata);
       });
     });
 
+    // const videoPath = path.join(__dirname, '..', req.file.path);
+    const format = path.extname(req.file.originalname).substring(1);
     const duration = metadata.format.duration;
     const size = req.file.size;
     const title = req.file.originalname;
-
-    // Generate a thumbnail from video data
-    const thumbnailBuffer = await new Promise((resolve, reject) => {
-      // Use a PassThrough stream for processing
-      const passThrough = new PassThrough();
-      passThrough.end(req.file.buffer); // End the stream with the buffer data
-
-      ffmpeg()
-        .input(passThrough)
-        .screenshots({
-          timestamps: ['00:00:10.000'],
-          size: '320x240',
-          // No need to specify folder or filename
-        })
-        .on('end', () => {
-          // ffmpeg does not provide a direct way to handle the screenshot buffer
-          // Ensure the 'end' event gets triggered to complete processing
-          passThrough.end(); 
-        })
-        .on('error', (err) => {
-          console.error('FFmpeg Error:', err); // Detailed error logging
-          reject(err);
-        })
-        .on('data', (data) => {
-          resolve(data); // Resolve with the screenshot data
-          reject(err);
-        });
-    });
-     
-     // Upload thumbnails to S3
-     const thumbnailKey = `thumbnails/${Date.now()}_thumbnail.png`;
-     await putObject(thumbnailKey, thumbnailBuffer);
-
-    return res.status(200).json({ message: 'Video uploaded successfully', videoKey });
-    // Create a new video document
-    // const newVideo = new Video({
-    //   userId: req.user ? req.user.id : null,
-    //   title: title || 'Untitled Video',
-    //   originalVideoPath: videoPath,
-    //   format: format,
-    //   size: size,
-    //   duration: duration,
-    //   thumbnailPath: thumbnailPath,
-    // });
-
-
-
     const videoId = uuidv4();
     const userId = req.user ? req.user.id : null;
+    const videoURL = await getURL(videoKey);
+
     const videoData = {
       'qut-username': process.env.QUT_USERNAME,
       videoId: videoId,
       title: title || 'Untitled Video',
-      originalVideoPath: videoPath,
+      originalVideoPath: videoURL,
       format: format,
       size: size,
       duration: duration,
-      thumbnailPath: thumbnailPath,
+      //thumbnailPath: thumbnailPath,
       userId: userId,
       transcodedVideoPath: null,
     };
-
+    console.log(process.env.QUT_USERNAME)
     // Save the video data to DynamoDB
     await createVideo(videoData);
+
+    // Generate a thumbnail from video data
+    // const thumbnailBuffer = await new Promise((resolve, reject) => {
+    //   // Use a PassThrough stream for processing
+    //   const passThrough = new PassThrough();
+    //   passThrough.end(req.file.buffer); // End the stream with the buffer data
+
+    //   ffmpeg()
+    //     .input(passThrough)
+    //     .screenshots({
+    //       timestamps: ['00:00:10.000'],
+    //       size: '320x240',
+    //       // No need to specify folder or filename
+    //     })
+    //     .on('end', () => {
+    //       // ffmpeg does not provide a direct way to handle the screenshot buffer
+    //       // Ensure the 'end' event gets triggered to complete processing
+    //       passThrough.end(); 
+    //     })
+    //     .on('error', (err) => {
+    //       console.error('FFmpeg Error:', err); // Detailed error logging
+    //       reject(err);
+    //     })
+    //     .on('data', (data) => {
+    //       resolve(data); // Resolve with the screenshot data
+    //       reject(err);
+    //     });
+    // });
+     
+    //  // Upload thumbnails to S3
+    //  const thumbnailKey = `thumbnails/${Date.now()}_thumbnail.png`;
+    //  await putObject(thumbnailKey, thumbnailBuffer);
+     
+
+
+
+
+    
 
     return res.status(201).json(videoData);
 

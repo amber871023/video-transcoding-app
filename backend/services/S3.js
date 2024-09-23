@@ -3,6 +3,7 @@ const bucketName = 'group50'
 const qutUsername = 'n11404680@qut.edu.au'
 const purpose = 'assessment-2'
 const s3Client = new S3.S3Client({ region: 'ap-southeast-2' });
+const S3Presigner = require("@aws-sdk/s3-request-presigner");
 
 // Create a bucket
 exports.createBucket= async() =>{
@@ -66,6 +67,21 @@ exports.putObject = async( key, value ) => {
     
 }
 
+// Read the presigned URL from S3
+exports.getURL = async(key) => {
+    command = new S3.GetObjectCommand({
+        Bucket: bucketName,
+        Key: key
+    })
+    try{
+        const presignedURL = await S3Presigner.getSignedUrl(s3Client, command, {expiresIn: 3600} );
+        return presignedURL;
+    }catch(err){
+        console.error('Error getting object from S3: ', err)
+        throw err;
+    }
+}
+
 // Read an object from S3
 exports.getObject = async(key) => {
     command = new S3.GetObjectCommand({
@@ -74,9 +90,11 @@ exports.getObject = async(key) => {
     })
     try{
         const response = await s3Client.send(command);
+        console.log("Get object successfully!")
         return response;
     }catch(err){
         console.error('Error getting object from S3: ', err)
         throw err;
     }
 }
+

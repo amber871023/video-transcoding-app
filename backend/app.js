@@ -16,11 +16,7 @@ const client = new DynamoDB.DynamoDBClient({ region: 'ap-southeast-2' });
 const docClient = DynamoDBLib.DynamoDBDocumentClient.from(client);
 console.log('DynamoDB configured successfully');
 
-const mongoDB = process.env.MONGODB_URI;
-// MongoDB connection
-mongoose.connect(mongoDB)
-  .then(() => console.log("MongoDB connected"))
-  .catch(err => console.log(`MongoDB connection err: ${err.message}`));
+
 // Function to check if a table exists
 async function tableExists(tableName) {
   try {

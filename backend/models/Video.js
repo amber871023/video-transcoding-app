@@ -19,7 +19,7 @@ async function createVideo(video) {
       format: video.format,
       size: video.size,
       duration: video.duration,
-      thumbnailPath: video.thumbnailPath,
+      //thumbnailPath:"1123",
       userId: video.userId, // Store user ID if logged in, otherwise null
       createdAt: new Date().toISOString()
     }
