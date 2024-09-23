@@ -19,12 +19,13 @@ const registerUser = async (req, res) => {
     const saltRounds = 10;
     const passwordHash = await bcrypt.hash(password, saltRounds);
 
-    await createUser({ email, username, passwordHash });
+    const newUser = await createUser({ email, username, passwordHash });
 
-    const token = jwt.sign({ id: user.userId, username, email }, secretKey, { expiresIn: '30d' });
+    const token = jwt.sign({ id: newUser.userId, username: newUser.username, email: newUser.email }, secretKey, { expiresIn: '30d' });
 
-    res.status(201).json({ error: false, msg: "User registered successfully", username, token });
+    res.status(201).json({ error: false, msg: "User registered successfully", username: newUser.username, token });
   } catch (err) {
+    console.error('Error during user registration:', err.message);
     res.status(500).json({ error: true, msg: "Server error", err: err.message });
   }
 };

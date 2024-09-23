@@ -8,24 +8,25 @@ const userTableName = "n11422807-users";
 const client = new DynamoDB.DynamoDBClient({ region: 'ap-southeast-2' });
 const docClient = DynamoDBLib.DynamoDBDocumentClient.from(client);
 
-async function createUser(user) {
-  const userId = uuidv4(); // Generate a unique user ID
+// Create User Function
+async function createUser({ email, username, passwordHash }) {
+  const userId = uuidv4();
 
   const command = new DynamoDBLib.PutCommand({
     TableName: userTableName,
     Item: {
       'qut-username': qutUsername,
-      userId: userId,
-      username: user.username,
-      passwordHash: user.passwordHash,
-      email: user.email,
+      userId,
+      username,
+      passwordHash,
+      email,
       createdAt: new Date().toISOString()
     }
   });
 
   try {
     await docClient.send(command);
-    console.log('User created successfully');
+    return { userId, username, email }; // Return the new user data
   } catch (err) {
     console.error('Error creating user:', err);
     throw err;
