@@ -2,25 +2,29 @@ const path = require('path');
 const fs = require('fs');
 const ffmpeg = require('fluent-ffmpeg');
 const Video = require('../models/Video');
+const { putObject, getObject} = require('../services/S3');
+const { PassThrough } = require('stream');
 
 exports.uploadVideo = async (req, res) => {
   try {
-    if (!req.file || !req.file.path) {
+    if (!req.file || !req.file.buffer) {
       return res.status(400).json({ message: 'No file uploaded.' });
     }
 
-    const videoPath = path.join(__dirname, '..', req.file.path);
+    // const videoPath = path.join(__dirname, '..', req.file.path);
     const format = path.extname(req.file.originalname).substring(1);
+    
+    // Upload video directly to S3 using the buffer from req.file
+    const videoBuffer = req.file.buffer;
+    const videoKey = `uploads/${Date.now()}_${req.file.originalname}`;
+    await putObject(videoKey, videoBuffer);
 
-    // Ensure thumbnails directory exists
-    const thumbnailDir = path.join(__dirname, '..', 'uploads', 'thumbnails');
-    if (!fs.existsSync(thumbnailDir)) {
-      fs.mkdirSync(thumbnailDir, { recursive: true });
-    }
+    const videoData = await getObject(videoKey);
 
     // Extract video metadata
     const metadata = await new Promise((resolve, reject) => {
-      ffmpeg.ffprobe(videoPath, (err, metadata) => {
+      ffmpeg(videoData.Body)
+      .ffprobe( (err, metadata) => {
         if (err) {
           return reject(err);
         }
@@ -32,36 +36,50 @@ exports.uploadVideo = async (req, res) => {
     const size = req.file.size;
     const title = req.file.originalname;
 
-    // Generate a thumbnail
-    const thumbnailPath = path.join('uploads', 'thumbnails', `${req.file.filename}-thumbnail.png`);
-    await new Promise((resolve, reject) => {
-      ffmpeg(videoPath)
+    // Generate a thumbnail from video data
+    const thumbnailBuffer = await new Promise((resolve, reject) => {
+      // Use a PassThrough stream for processing
+      const passThrough = new PassThrough();
+      passThrough.end(req.file.buffer); // End the stream with the buffer data
+
+      ffmpeg()
+        .input(passThrough)
         .screenshots({
-          timestamps: ['10%'],
-          filename: `${req.file.filename}-thumbnail.png`,
-          folder: 'uploads/thumbnails',
-          size: '320x240'
+          timestamps: ['00:00:10.000'],
+          size: '320x240',
+          // No need to specify folder or filename
         })
-        .on('end', resolve)
+        .on('end', () => {
+          // ffmpeg does not provide a direct way to handle the screenshot buffer
+          // Ensure the 'end' event gets triggered to complete processing
+          passThrough.end(); 
+        })
         .on('error', (err) => {
-          reject(err);//Error generating thumbnail
+          console.error('FFmpeg Error:', err); // Detailed error logging
+          reject(err);
+        })
+        .on('data', (data) => {
+          resolve(data); // Resolve with the screenshot data
         });
     });
+     
+     // Upload thumbnails to S3
+     const thumbnailKey = `thumbnails/${Date.now()}_thumbnail.png`;
+     await putObject(thumbnailKey, thumbnailBuffer);
 
+    return res.status(200).json({ message: 'Video uploaded successfully', videoKey });
     // Create a new video document
-    const newVideo = new Video({
-      userId: req.user ? req.user.id : null,
-      title: title || 'Untitled Video',
-      originalVideoPath: videoPath,
-      format: format,
-      size: size,
-      duration: duration,
-      thumbnailPath: thumbnailPath,
-    });
+    // const newVideo = new Video({
+    //   userId: req.user ? req.user.id : null,
+    //   title: title || 'Untitled Video',
+    //   originalVideoPath: videoPath,
+    //   format: format,
+    //   size: size,
+    //   duration: duration,
+    //   thumbnailPath: thumbnailPath,
+    // });
 
-    // Save the video to the database
-    const savedVideo = await newVideo.save();
-    return res.json(savedVideo);
+
 
   } catch (err) {
     return res.status(500).json({ message: 'Error processing video upload.', error: err.message });

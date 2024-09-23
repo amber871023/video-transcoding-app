@@ -5,8 +5,8 @@ import { FaFileUpload, FaExchangeAlt, FaTrashAlt, FaDownload, FaFileVideo, FaFil
 import CustomButton from './CustomButton';
 import axios from 'axios';
 
-// const baseUrl = "http://localhost:3001";
-const baseUrl = "http://3.25.117.203:3001";
+const baseUrl = "http://localhost:3001";
+//const baseUrl = "http://3.25.117.203:3001";
 
 const UploadSection = () => {
   const [videoFiles, setVideoFiles] = useState([]);

@@ -6,12 +6,11 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const path = require('path');
 const createError = require('http-errors');
-
+const { createBucket } = require('./services/S3');
 
 const app = express();
 
 const mongoDB = process.env.MONGODB_URI;
-
 // MongoDB connection
 mongoose.connect(mongoDB)
   .then(() => console.log("MongoDB connected"))
@@ -20,9 +19,9 @@ mongoose.connect(mongoDB)
 // Middlewares
 app.use(morgan('dev'));
 app.use(cors({
-  // origin: 'http://localhost:3000',// Replace with your frontend URL
+  origin: 'http://localhost:3000',// Replace with your frontend URL
   credentials: true,
-  origin: 'http://3.25.117.203:3000'
+  //origin: 'http://3.25.117.203:3000'
 })); app.use(bodyParser.json());
 app.use(express.json());
 
