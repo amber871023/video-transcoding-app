@@ -6,7 +6,7 @@ import CustomButton from './CustomButton';
 import axios from 'axios';
 
 const baseUrl = "http://localhost:3001";
-//const baseUrl = "http://3.25.117.203:3001";
+// const baseUrl = "http://3.25.117.203:3001";
 
 const UploadSection = () => {
   const [videoFiles, setVideoFiles] = useState([]);
@@ -68,7 +68,7 @@ const UploadSection = () => {
       });
 
       updateFileData(index, {
-        id: response.data._id,
+        id: response.data.videoId,
         thumbnailPath: response.data.thumbnailPath,
         size: response.data.size,
         duration: response.data.duration,
@@ -77,7 +77,7 @@ const UploadSection = () => {
 
       updateFileStatus(index, 'Uploaded');
 
-      await handleConvert({ ...file, id: response.data._id }, index);
+      await handleConvert({ ...file, id: response.data.videoId, }, index);
 
     } catch (error) {
       console.error('Error uploading file:', error);
@@ -174,16 +174,35 @@ const UploadSection = () => {
     }
   };
 
-  const handleDownload = (file) => {
-    const downloadUrl = `${baseUrl}/videos/download/${file.id}`;
+  const handleDownload = async (file) => {
+    try {
+      const response = await fetch(`${baseUrl}/videos/download/${file.id}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
 
-    const link = document.createElement('a');
-    link.href = downloadUrl;
-    link.setAttribute('download', '');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      if (!response.ok) {
+        throw new Error('Failed to download file.');
+      }
+
+      const blob = await response.blob();
+      const downloadUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.setAttribute('download', file.title || 'downloaded_video');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(downloadUrl); // Clean up the URL object
+
+    } catch (error) {
+      console.error('Download failed:', error);
+      alert('Failed to download the file.');
+    }
   };
+
 
   const updateFileStatus = (index, status) => {
     setVideoFiles(prevFiles => {

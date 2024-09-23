@@ -4,7 +4,10 @@ const ffmpeg = require('fluent-ffmpeg');
 const Video = require('../models/Video');
 const { putObject, getObject} = require('../services/S3');
 const { PassThrough } = require('stream');
+const { createVideo, getVideoById, getVideosByUserId, updateVideoTranscodedPath, deleteVideoRecord } = require('../models/Video');
+const { v4: uuidv4 } = require('uuid');
 
+// Upload Video
 exports.uploadVideo = async (req, res) => {
   try {
     if (!req.file || !req.file.buffer) {
@@ -60,6 +63,7 @@ exports.uploadVideo = async (req, res) => {
         })
         .on('data', (data) => {
           resolve(data); // Resolve with the screenshot data
+          reject(err);
         });
     });
      
@@ -81,12 +85,31 @@ exports.uploadVideo = async (req, res) => {
 
 
 
+    const videoId = uuidv4();
+    const userId = req.user ? req.user.id : null;
+    const videoData = {
+      'qut-username': process.env.QUT_USERNAME,
+      videoId: videoId,
+      title: title || 'Untitled Video',
+      originalVideoPath: videoPath,
+      format: format,
+      size: size,
+      duration: duration,
+      thumbnailPath: thumbnailPath,
+      userId: userId,
+      transcodedVideoPath: null,
+    };
+
+    // Save the video data to DynamoDB
+    await createVideo(videoData);
+
+    return res.status(201).json(videoData);
+
   } catch (err) {
     return res.status(500).json({ message: 'Error processing video upload.', error: err.message });
   }
 };
 
-const activeConversions = {}; // This object will store progress keyed by video IDs
 exports.convertVideo = async (req, res) => {
   try {
     const videoId = req.body.videoId;
@@ -95,7 +118,7 @@ exports.convertVideo = async (req, res) => {
       return res.status(400).json({ message: 'No video ID provided.' });
     }
 
-    const video = await Video.findById(videoId);
+    const video = await getVideoById(videoId);
     if (!video) {
       return res.status(404).json({ message: 'Video not found.' });
     }
@@ -114,14 +137,13 @@ exports.convertVideo = async (req, res) => {
     res.setHeader('Connection', 'keep-alive');
 
     let totalDuration = 0;
-    let lastProgress = 0; // Initialize last progress
+    let lastProgress = 0;
 
     const MIN_PROGRESS_INCREMENT = 1;
 
     const ffmpegProcess = ffmpeg(video.originalVideoPath)
       .output(outputPath)
-      .on('start', (commandLine) => {
-      })
+      .on('start', (commandLine) => { })
       .on('codecData', (data) => {
         const durationParts = data.duration.split(':');
         totalDuration = parseFloat(durationParts[0]) * 3600 + parseFloat(durationParts[1]) * 60 + parseFloat(durationParts[2]);
@@ -139,8 +161,7 @@ exports.convertVideo = async (req, res) => {
         }
       })
       .on('end', async () => {
-        video.transcodedVideoPath = outputPath;//fmpeg process completed
-        await video.save();
+        await updateVideoTranscodedPath(video.videoId, outputPath);
         res.write('data: 100\n\n');
         res.end();
       })
@@ -160,9 +181,11 @@ exports.convertVideo = async (req, res) => {
   }
 };
 
+// Download Video
 exports.downloadVideo = async (req, res) => {
   try {
-    const video = await Video.findById(req.params.id);
+    const video = await getVideoById(req.params.id);
+    console.log('Retrieved video:', video);
     if (!video || !video.transcodedVideoPath) {
       return res.status(404).json({ message: 'Video or transcoded file not found.' });
     }
@@ -182,32 +205,28 @@ exports.deleteVideo = async (req, res) => {
   try {
     const videoId = req.params.id;
 
-    const video = await Video.findByIdAndDelete(videoId);
+    const video = await getVideoById(videoId);
     if (!video) {
       return res.status(404).json({ message: 'Video not found' });
     }
 
-    // Construct the correct paths for the original video and thumbnail
-    const originalVideoPath = path.isAbsolute(video.originalVideoPath)
-      ? video.originalVideoPath
-      : path.join(__dirname, '..', video.originalVideoPath);
+    // Resolve paths for original, thumbnail, and transcoded files
+    const originalVideoPath = path.resolve(video.originalVideoPath);
+    const thumbnailPath = path.resolve(video.thumbnailPath);
+    const transcodedVideoPath = video.transcodedVideoPath ? path.resolve(video.transcodedVideoPath) : null;
 
-    const thumbnailPath = path.isAbsolute(video.thumbnailPath)
-      ? video.thumbnailPath
-      : path.join(__dirname, '..', video.thumbnailPath);
+    // Delete associated files if they exist
+    if (fs.existsSync(originalVideoPath)) fs.unlinkSync(originalVideoPath);
+    else console.warn(`Original video file not found: ${originalVideoPath}`);
 
-    // Delete associated files
-    if (fs.existsSync(originalVideoPath)) {
-      fs.unlinkSync(originalVideoPath);
-    } else {
-      console.warn(`Original video file not found: ${originalVideoPath}`);
-    }
+    if (fs.existsSync(thumbnailPath)) fs.unlinkSync(thumbnailPath);
+    else console.warn(`Thumbnail file not found: ${thumbnailPath}`);
 
-    if (fs.existsSync(thumbnailPath)) {
-      fs.unlinkSync(thumbnailPath);
-    } else {
-      console.warn(`Thumbnail file not found: ${thumbnailPath}`);
-    }
+    if (transcodedVideoPath && fs.existsSync(transcodedVideoPath)) fs.unlinkSync(transcodedVideoPath);
+    else console.warn(`Transcoded video file not found: ${transcodedVideoPath}`);
+
+    // Delete the video record from DynamoDB
+    await deleteVideoRecord(videoId);
 
     res.json({ message: 'Video deleted successfully' });
   } catch (error) {
@@ -219,24 +238,27 @@ exports.deleteVideo = async (req, res) => {
 exports.getUserVideos = async (req, res) => {
   try {
     const userId = req.user.id;
-    const videos = await Video.find({ userId });
+    if (!userId) {
+      return res.status(400).json({ error: true, msg: 'User ID not found in request.' });
+    }
+    const videos = await getVideosByUserId(userId);
     res.json(videos);
   } catch (err) {
-    res.status(500).json({ error: true, msg: 'Failed to fetch videos' });
+    console.error('Error fetching user videos:', err);
+    res.status(500).json({ error: true, msg: 'Failed to fetch videos', errorDetails: err.message });
   }
 };
 
+// Reformat Video
 exports.reformatVideo = async (req, res) => {
   try {
-    console.log('Reformat request received for video ID:', req.params.id);
-
-    const video = await Video.findById(req.params.id);
+    const video = await getVideoById(req.params.id);
     if (!video) {
-      console.error('Video not found');
       return res.status(404).json({ message: 'Video not found' });
     }
 
     const inputPath = path.resolve(video.transcodedVideoPath);
+    console.log('Input Path:', inputPath);
 
     const outputFilename = `video-${Date.now()}-transcoded.${req.body.format}`;
     const outputPath = path.resolve(__dirname, '../transcoded_videos', outputFilename);
@@ -245,7 +267,6 @@ exports.reformatVideo = async (req, res) => {
       fs.mkdirSync(path.dirname(outputPath), { recursive: true });
     }
 
-    // Set headers for Server-Sent Events (SSE)
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
@@ -256,8 +277,7 @@ exports.reformatVideo = async (req, res) => {
     const ffmpegProcess = ffmpeg(inputPath)
       .toFormat(req.body.format)
       .output(outputPath)
-      .on('start', (commandLine) => {
-      })
+      .on('start', (commandLine) => { })
       .on('codecData', (data) => {
         const durationParts = data.duration.split(':');
         totalDuration = parseFloat(durationParts[0]) * 3600 + parseFloat(durationParts[1]) * 60 + parseFloat(durationParts[2]);
@@ -273,11 +293,9 @@ exports.reformatVideo = async (req, res) => {
         }
       })
       .on('end', async () => {
-        video.transcodedVideoPath = outputPath;//ffmpeg process completed
-        await video.save();
-
+        await updateVideoTranscodedPath(video.videoId, outputPath);
         res.write('data: 100\n\n');
-        res.end(); //Reformatting complete
+        res.end();
       })
       .on('error', (err) => {
         res.write(`data: error\n\n`);
@@ -286,7 +304,6 @@ exports.reformatVideo = async (req, res) => {
 
     req.on('close', () => {
       ffmpegProcess.kill();
-      console.log('Client disconnected, stopping reformatting process.');
     });
 
     ffmpegProcess.run();

@@ -6,6 +6,7 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const path = require('path');
 const createError = require('http-errors');
+<<<<<<< HEAD
 const { createBucket } = require('./services/S3');
 
 const app = express();

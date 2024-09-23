@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const Video = require('../models/Video');
 const { authorize } = require('../middlewares/auth');
 const optionalAuthorize = require('../middlewares/optAuth');
 const { uploadVideo, convertVideo, downloadVideo, deleteVideo, getUserVideos, reformatVideo } = require('../controllers/videoController');
@@ -33,7 +32,7 @@ const upload = multer({
       'video/x-ms-wmv', // wmv
       'video/x-flv', // flv
       'video/webm', // webm
-      'application/octet-stream'
+      'application/octet-stream' // Fallback for cases like this
     ];
 
     // Extract the file extension and MIME type
@@ -52,7 +51,7 @@ const upload = multer({
 
 router.post('/upload', optionalAuthorize, upload.single('video'), uploadVideo);
 router.post('/convert', optionalAuthorize, upload.none(), convertVideo);
-router.post('/reformat/:id', authorize, upload.none(), reformatVideo);
+router.post('/reformat/:id', optionalAuthorize, upload.none(), reformatVideo);
 router.delete('/delete/:id', optionalAuthorize, deleteVideo);
 router.get('/download/:id', optionalAuthorize, downloadVideo);
 router.get('/', authorize, getUserVideos);

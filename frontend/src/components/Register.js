@@ -3,7 +3,7 @@ import { Modal, ModalOverlay, ModalContent, ModalHeader, ModalCloseButton, Modal
 import axios from 'axios';
 
 const baseUrl = "http://localhost:3001";
-//const baseUrl = "http://3.25.117.203:3001";
+// const baseUrl = "http://3.25.117.203:3001";
 const Register = ({ isOpen, onClose, onSuccess }) => {
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
