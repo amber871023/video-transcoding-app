@@ -51,7 +51,7 @@ exports.uploadVideo = async (req, res) => {
     });
 
     const videoId = uuidv4();
-    const userId = req.user ? req.user.id : null;
+    const userId = req.user ? req.user.id : 'anonymous';  // Use "anonymous" for unauthenticated users
     const videoData = {
       'qut-username': process.env.QUT_USERNAME,
       videoId: videoId,
