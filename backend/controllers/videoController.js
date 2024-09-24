@@ -19,8 +19,36 @@ exports.uploadVideo = async (req, res) => {
     const videoKey = `uploads/${Date.now()}_${req.file.originalname}`;
     await putObject(videoKey, videoBuffer);
 
-    const vidData = await getObject(videoKey);
+    // Use FFmpeg to take a screenshot from the video buffer
+    // const tempFilePath = `/tmp/${Date.now()}_${req.file.originalname}`; // Temporary path for the video
+    // const thumbnailPath = `/tmp/${Date.now()}_screenshot.png`; // Temporary path for the screenshot
 
+    // // Write the buffer to a temporary file so FFmpeg can access it
+    // const fs = require('fs');
+    // fs.writeFileSync(tempFilePath, videoBuffer);
+
+    // // Generate a thumbnail
+    // await new Promise((resolve, reject) => {
+    //   ffmpeg(tempFilePath)
+    //     .screenshots({
+    //       timestamps: ['10%'],
+    //       filename: thumbnailPath,  // Save the screenshot
+    //       folder: '/tmp',  // Temporary folder for the screenshot
+    //       size: '320x240'
+    //     })
+    //     .on('end', resolve)
+    //     .on('error', (err) => {
+    //       reject(err);
+    //     });
+    // });
+
+    //  // Upload the thumbnail to S3
+    //  const thumbnailBuffer = fs.readFileSync(thumbnailPath);
+    //  const thumbnailKey = `thumbnails/${Date.now()}_${req.file.originalname}_thumbnail.png`;
+    //  await putObject(thumbnailKey, thumbnailBuffer); // Upload the screenshot to S3
+
+     
+    const vidData = await getObject(videoKey);
     // Extract video metadata
     const metadata = await new Promise((resolve, reject) => {
       ffmpeg(vidData.Body)
@@ -39,7 +67,7 @@ exports.uploadVideo = async (req, res) => {
     const size = req.file.size;
     const title = req.file.originalname;
     const videoId = uuidv4();
-    const userId = req.user ? req.user.id : null;
+    const userId = req.user ? req.user.id : 'anonymous';  // Use "anonymous" for unauthenticated users
     const videoURL = await getURL(videoKey);
 
     const videoData = {
@@ -54,7 +82,11 @@ exports.uploadVideo = async (req, res) => {
       userId: userId,
       transcodedVideoPath: null,
     };
-    console.log(process.env.QUT_USERNAME)
+
+    // Cleanup: Delete the temporary files
+    // fs.unlinkSync(tempFilePath);
+    // fs.unlinkSync(thumbnailPath);
+    
     // Save the video data to DynamoDB
     await createVideo(videoData);
 
@@ -89,12 +121,6 @@ exports.uploadVideo = async (req, res) => {
     //  // Upload thumbnails to S3
     //  const thumbnailKey = `thumbnails/${Date.now()}_thumbnail.png`;
     //  await putObject(thumbnailKey, thumbnailBuffer);
-     
-
-
-
-
-    
 
     return res.status(201).json(videoData);
 
@@ -105,6 +131,7 @@ exports.uploadVideo = async (req, res) => {
 
 exports.convertVideo = async (req, res) => {
   try {
+    console.log('here');
     const videoId = req.body.videoId;
 
     if (!videoId) {
@@ -116,13 +143,15 @@ exports.convertVideo = async (req, res) => {
       return res.status(404).json({ message: 'Video not found.' });
     }
 
-    const transcodedDir = path.join(__dirname, '..', 'transcoded_videos');
-    if (!fs.existsSync(transcodedDir)) {
-      fs.mkdirSync(transcodedDir, { recursive: true });
-    }
+    // const transcodedDir = path.join(__dirname, '..', 'transcoded_videos');
+    // if (!fs.existsSync(transcodedDir)) {
+    //   fs.mkdirSync(transcodedDir, { recursive: true });
+    // }
 
-    const outputFileName = `${path.basename(video.originalVideoPath, path.extname(video.originalVideoPath))}-transcoded.${req.body.format.toLowerCase()}`;
-    const outputPath = path.join(transcodedDir, outputFileName);
+    // Generate a unique key for the transcoded video in S3
+    //const outputKey = `transcoded/${Date.now()}_${path.basename(video.originalVideoPath, path.extname(video.originalVideoPath))}.${req.body.format.toLowerCase()}`;
+    const outputKey = `transcoded/${path.basename(video.originalVideoPath, path.extname(video.originalVideoPath))}.${req.body.format.toLowerCase()}`;
+
 
     // Set headers for Server-Sent Events (SSE)
     res.setHeader('Content-Type', 'text/event-stream');
@@ -131,11 +160,16 @@ exports.convertVideo = async (req, res) => {
 
     let totalDuration = 0;
     let lastProgress = 0;
-
     const MIN_PROGRESS_INCREMENT = 1;
 
+    // Create a PassThrough stream
+    const passThroughStream = new PassThrough();
+
+    // Start uploading the video to S3 while ffmpeg processes the video
+    const uploadPromise = putObject(outputKey, passThroughStream);
+
     const ffmpegProcess = ffmpeg(video.originalVideoPath)
-      .output(outputPath)
+      .outputFormat(req.body.format.toLowerCase())
       .on('start', (commandLine) => { })
       .on('codecData', (data) => {
         const durationParts = data.duration.split(':');
@@ -154,14 +188,18 @@ exports.convertVideo = async (req, res) => {
         }
       })
       .on('end', async () => {
-        await updateVideoTranscodedPath(video.videoId, outputPath);
+        // Wait the transcoded video path in the database
+        await uploadPromise;
+        const outputPath = `${process.env.S3_BUCKET}/${outputKey}`;
+        await updateVideoTranscodedPath(videoId, outputPath);
         res.write('data: 100\n\n');
         res.end();
       })
       .on('error', (err) => {
         res.write('data: error\n\n');
         res.end();
-      });
+      })
+      .pipe(passThroughStream); // Pipe the ffmpeg output to the PassThrough stream
 
     req.on('close', () => {
       ffmpegProcess.kill();
