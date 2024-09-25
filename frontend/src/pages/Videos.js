@@ -40,10 +40,9 @@ const VideoPage = () => {
         },
       });
       const videosWithUrls = response.data.map(video => {
-        const filename = video.transcodedVideoPath.split('/').pop();
         return {
           ...video,
-          videoUrl: `${baseUrl}/transcoded_videos/${filename}`
+          videoUrl: video.originalVideoPath,
         };
       });
       setVideos(videosWithUrls);
@@ -52,7 +51,7 @@ const VideoPage = () => {
         title: 'Error fetching videos.',
         description: 'Please try again later.',
         status: 'error',
-        duration: 5000,
+        duration: 3000,
         isClosable: true,
       });
     }
@@ -69,7 +68,6 @@ const VideoPage = () => {
     setConversionProgress((prev) => ({ ...prev, [videoToReformat]: 0 }));
 
     try {
-      // Send the POST request to initiate the reformatting process
       const response = await fetch(`${baseUrl}/videos/reformat/${videoToReformat}`, {
         method: 'POST',
         headers: {
@@ -175,6 +173,7 @@ const VideoPage = () => {
 
   const handlePlayVideo = (videoId) => {
     const video = videos.find(v => v.videoId === videoId);
+    console.log(video)
     if (video && video.videoUrl) {
       setPlayingVideoId(videoId);
     } else {
@@ -266,7 +265,7 @@ const VideoPage = () => {
             <VStack spacing={4} width={{ base: "100%", md: "100%" }}>
               {videos.map((video) => {
                 const convertedFormat = video.transcodedVideoPath
-                  ? video.transcodedVideoPath.split('.').pop().toUpperCase()
+                  ? video.transcodedVideoPath.split('.').pop().slice(0, 3).toUpperCase()
                   : null;
 
                 return (
@@ -293,7 +292,7 @@ const VideoPage = () => {
                           boxShadow="lg"
                         >
                           <video
-                            src={video.videoUrl}
+                            src={video.transcodedVideoPath}
                             controls
                             autoPlay
                             style={{
@@ -306,9 +305,10 @@ const VideoPage = () => {
                         </Box>
                       ) : (
                         <Image
-                          src={video.thumbnailPath ? `${baseUrl}/${video.thumbnailPath}` : video.thumbnail}
+                          src={(video.thumbnailPath)}
                           alt={video.title}
                           boxSize={{ base: "100%", md: "250px" }}
+                          maxH={"350px"}
                           objectFit="cover"
                           borderRadius="md"
                           onClick={() => handlePlayVideo(video.videoId)}

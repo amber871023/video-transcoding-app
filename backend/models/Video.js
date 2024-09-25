@@ -6,7 +6,6 @@ const videoTableName = "n11422807-videos";
 const client = new DynamoDB.DynamoDBClient({ region: 'ap-southeast-2' });
 const docClient = DynamoDBLib.DynamoDBDocumentClient.from(client);
 
-// Create Video
 async function createVideo(video) {
   const command = new DynamoDBLib.PutCommand({
     TableName: videoTableName,
@@ -19,7 +18,8 @@ async function createVideo(video) {
       format: video.format,
       size: video.size,
       duration: video.duration,
-      //thumbnailPath:"1123",
+      thumbnailPath: video.thumbnailPath,
+      s3Key: video.s3Key,
       userId: video.userId, // Store user ID if logged in, otherwise null
       createdAt: new Date().toISOString()
     }
@@ -55,18 +55,17 @@ async function getVideoById(videoId) {
 
 // Get Videos by User ID
 async function getVideosByUserId(userId) {
-  // Query command for fetching videos by userId
   const command = new DynamoDBLib.QueryCommand({
     TableName: videoTableName,
-    KeyConditionExpression: '#qutUsername = :qutUsername', // Matching the partition key
-    FilterExpression: '#userId = :userId', // Filtering by userId
+    KeyConditionExpression: '#qutUsername = :qutUsername',
+    FilterExpression: '#userId = :userId',
     ExpressionAttributeNames: {
       '#qutUsername': 'qut-username', // Define partition key
       '#userId': 'userId', // Define filter key
     },
     ExpressionAttributeValues: {
-      ':qutUsername': process.env.QUT_USERNAME, // Value for partition key
-      ':userId': userId, // Value for filter
+      ':qutUsername': process.env.QUT_USERNAME,
+      ':userId': userId,
     },
   });
 
@@ -79,30 +78,32 @@ async function getVideosByUserId(userId) {
   }
 }
 
-// Update Video with Transcoded Path
-async function updateVideoTranscodedPath(videoId, transcodedPath) {
+// Update Video with Transcoded Path and Format
+async function updateVideoTranscodedPath(videoId, transcodedPath, transcodedFormat) {
   const command = new DynamoDBLib.UpdateCommand({
     TableName: videoTableName,
     Key: {
       'qut-username': qutUsername,
       videoId: videoId
     },
-    UpdateExpression: 'SET transcodedVideoPath = :transcodedPath',
+    UpdateExpression: 'SET transcodedVideoPath = :transcodedPath, transcodedFormat = :transcodedFormat',
     ExpressionAttributeValues: {
       ':transcodedPath': transcodedPath,
+      ':transcodedFormat': transcodedFormat,
     },
     ReturnValues: 'UPDATED_NEW'
   });
 
   try {
     const response = await docClient.send(command);
-    console.log('Video updated with transcoded path:', response);
+    console.log('Video updated with transcoded path and format:', response);
     return response.Attributes;
   } catch (err) {
-    console.error('Error updating transcoded video path:', err);
+    console.error('Error updating transcoded video path and format:', err);
     throw err;
   }
 }
+
 
 // Delete Video Record from DynamoDB
 async function deleteVideoRecord(videoId) {

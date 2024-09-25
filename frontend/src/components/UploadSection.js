@@ -67,8 +67,9 @@ const UploadSection = () => {
         },
       });
 
+      // Correctly set the videoId property
       updateFileData(index, {
-        id: response.data.videoId,
+        videoId: response.data.videoId, // Ensure this matches what is expected later
         thumbnailPath: response.data.thumbnailPath,
         size: response.data.size,
         duration: response.data.duration,
@@ -77,7 +78,7 @@ const UploadSection = () => {
 
       updateFileStatus(index, 'Uploaded');
 
-      await handleConvert({ ...file, id: response.data.videoId, }, index);
+      await handleConvert({ ...file, videoId: response.data.videoId }, index); // Pass the correct videoId
 
     } catch (error) {
       console.error('Error uploading file:', error);
@@ -114,7 +115,7 @@ const UploadSection = () => {
   };
 
   const handleConvert = async (file, index) => {
-    if (!file.id) {
+    if (!file.videoId) {
       console.error('Cannot convert without a video ID.');
       return;
     }
@@ -128,15 +129,15 @@ const UploadSection = () => {
       updateFileStatus(index, 'Processing');
 
       const formData = new FormData();
-      formData.append('videoId', file.id);
+      formData.append('videoId', file.videoId); // Use videoId as expected
       formData.append('format', file.format.toLowerCase());
-
+      // Correct way to log the FormData contents
       const response = await fetch(`${baseUrl}/videos/convert`, {
         method: 'POST',
         body: formData,
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        }
+        },
       });
 
       if (!response.ok) {
@@ -153,7 +154,6 @@ const UploadSection = () => {
         done = readerDone;
         const chunk = decoder.decode(value, { stream: true });
 
-        // Strip the 'data: ' prefix if it exists
         const cleanedChunk = chunk.trim().replace(/^data:\s*/, '');
 
         const progress = Number(cleanedChunk);
@@ -176,7 +176,7 @@ const UploadSection = () => {
 
   const handleDownload = async (file) => {
     try {
-      const response = await fetch(`${baseUrl}/videos/download/${file.id}`, {
+      const response = await fetch(`${baseUrl}/videos/download/${file.videoId}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -226,9 +226,9 @@ const UploadSection = () => {
   const handleRemove = async (index) => {
     const videoToDelete = videoFiles[index];
 
-    if (videoToDelete && videoToDelete.id) {
+    if (videoToDelete && videoToDelete.videoId) {
       try {
-        await axios.delete(`${baseUrl}/videos/delete/${videoToDelete.id}`, {
+        await axios.delete(`${baseUrl}/videos/delete/${videoToDelete.videoId}`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`,
           },
@@ -334,7 +334,7 @@ const UploadSection = () => {
             <HStack align="center">
               {file.thumbnailPath ? (
                 <Image
-                  src={`${baseUrl}/${file.thumbnailPath}`}
+                  src={`${file.thumbnailPath}`}
                   alt="Video Thumbnail"
                   boxSize="100px"
                   objectFit="cover"

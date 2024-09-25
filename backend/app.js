@@ -60,45 +60,45 @@ async function createUserTable() {
   }
 }
 
-// Function to create the Video table
-async function createVideoTable() {
-  const tableName = "n11422807-videos";
-  if (await tableExists(tableName)) {
-    console.log(`Table ${tableName} already exists.`);
-    return;
-  }
+// // Function to create the Video table
+// async function createVideoTable() {
+//   const tableName = "n11422807-videos";
+//   if (await tableExists(tableName)) {
+//     console.log(`Table ${tableName} already exists.`);
+//     return;
+//   }
 
-  const command = new CreateTableCommand({
-    TableName: tableName,
-    AttributeDefinitions: [
-      { AttributeName: 'qut-username', AttributeType: 'S' },
-      { AttributeName: 'videoId', AttributeType: 'S' },
-    ],
-    KeySchema: [
-      { AttributeName: 'qut-username', KeyType: 'HASH' },
-      { AttributeName: 'videoId', KeyType: 'RANGE' },
-    ],
-    ProvisionedThroughput: {
-      ReadCapacityUnits: 1,
-      WriteCapacityUnits: 1,
-    },
-  });
+//   const command = new CreateTableCommand({
+//     TableName: tableName,
+//     AttributeDefinitions: [
+//       { AttributeName: 'qut-username', AttributeType: 'S' },
+//       { AttributeName: 'videoId', AttributeType: 'S' },
+//     ],
+//     KeySchema: [
+//       { AttributeName: 'qut-username', KeyType: 'HASH' },
+//       { AttributeName: 'videoId', KeyType: 'RANGE' },
+//     ],
+//     ProvisionedThroughput: {
+//       ReadCapacityUnits: 1,
+//       WriteCapacityUnits: 1,
+//     },
+//   });
 
-  try {
-    const response = await client.send(command);
-    console.log(`Create Video Table command response:`, response);
-  } catch (error) {
-    console.error('Error creating Video table:', error);
-  }
-}
+//   try {
+//     const response = await client.send(command);
+//     console.log(`Create Video Table command response:`, response);
+//   } catch (error) {
+//     console.error('Error creating Video table:', error);
+//   }
+// }
 
-// Main function to create both tables
-async function createTables() {
-  await createUserTable();
-  await createVideoTable();
-}
+// // Main function to create both tables
+// async function createTables() {
+//   await createUserTable();
+//   await createVideoTable();
+// }
 
-createTables();
+// createTables();
 
 
 // Middlewares
@@ -109,6 +109,7 @@ app.use(cors({
   //origin: 'http://3.25.117.203:3000'
 })); app.use(bodyParser.json());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Routes
 const userRoutes = require('./routes/userRoutes');

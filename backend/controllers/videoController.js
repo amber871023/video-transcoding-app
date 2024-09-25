@@ -1,139 +1,130 @@
 const path = require('path');
 const fs = require('fs');
 const ffmpeg = require('fluent-ffmpeg');
-const Video = require('../models/Video');
-const { putObject, getObject, getURL} = require('../services/S3');
+const { putObject, getObject, getURLIncline, deleteObject } = require('../services/S3');
 const { PassThrough } = require('stream');
 const { createVideo, getVideoById, getVideosByUserId, updateVideoTranscodedPath, deleteVideoRecord } = require('../models/Video');
 const { v4: uuidv4 } = require('uuid');
+const https = require('https');
 
-// Upload Video
 exports.uploadVideo = async (req, res) => {
   try {
     if (!req.file || !req.file.buffer) {
       return res.status(400).json({ message: 'No file uploaded.' });
     }
-    
+
     // Upload video directly to S3 using the buffer from req.file
     const videoBuffer = req.file.buffer;
-    const videoKey = `uploads/${Date.now()}_${req.file.originalname}`;
+    const videoId = uuidv4();
+    const format = path.extname(req.file.originalname).substring(1);
+    const videoKey = `uploads/${videoId}.${format}`;
     await putObject(videoKey, videoBuffer);
 
-    // Use FFmpeg to take a screenshot from the video buffer
-    // const tempFilePath = `/tmp/${Date.now()}_${req.file.originalname}`; // Temporary path for the video
-    // const thumbnailPath = `/tmp/${Date.now()}_screenshot.png`; // Temporary path for the screenshot
+    // Get the URL of the uploaded video
+    const videoURL = await getURLIncline(videoKey);
 
-    // // Write the buffer to a temporary file so FFmpeg can access it
-    // const fs = require('fs');
-    // fs.writeFileSync(tempFilePath, videoBuffer);
+    // Paths for temporary thumbnail storage
+    const thumbnailPath = `/tmp/${Date.now()}_screenshot.png`;
 
-    // // Generate a thumbnail
-    // await new Promise((resolve, reject) => {
-    //   ffmpeg(tempFilePath)
-    //     .screenshots({
-    //       timestamps: ['10%'],
-    //       filename: thumbnailPath,  // Save the screenshot
-    //       folder: '/tmp',  // Temporary folder for the screenshot
-    //       size: '320x240'
-    //     })
-    //     .on('end', resolve)
-    //     .on('error', (err) => {
-    //       reject(err);
-    //     });
-    // });
+    // Generate a thumbnail using the videoURL directly
+    try {
+      await new Promise((resolve, reject) => {
+        ffmpeg(videoURL)
+          .screenshots({
+            timestamps: ['10%'],
+            filename: path.basename(thumbnailPath),
+            folder: path.dirname(thumbnailPath),
+            size: '320x240',
+          })
+          .on('end', resolve)
+          .on('error', (err) => {
+            console.error('Error generating thumbnail:', err.message);
+            reject(new Error('Failed to generate thumbnail.'));
+          });
+      });
+    } catch (err) {
+      console.error('Error generating thumbnail:', err.message);
+      throw new Error('Failed to generate thumbnail.');
+    }
 
-    //  // Upload the thumbnail to S3
-    //  const thumbnailBuffer = fs.readFileSync(thumbnailPath);
-    //  const thumbnailKey = `thumbnails/${Date.now()}_${req.file.originalname}_thumbnail.png`;
-    //  await putObject(thumbnailKey, thumbnailBuffer); // Upload the screenshot to S3
+    // Upload the thumbnail to S3
+    const thumbnailBuffer = fs.readFileSync(thumbnailPath);
+    const thumbnailKey = `thumbnails/${videoId}.png`;
+    await putObject(thumbnailKey, thumbnailBuffer);
+    const thumbnailURL = await getURLIncline(thumbnailKey);
 
-     
-    const vidData = await getObject(videoKey);
     // Extract video metadata
+    const vidData = await getObject(videoKey);
     const metadata = await new Promise((resolve, reject) => {
-      ffmpeg(vidData.Body)
-      .ffprobe( (err, metadata) => {
-        if (err) {
-          console.log('here');
-          return reject(err);
-        }
+      ffmpeg(vidData.Body).ffprobe((err, metadata) => {
+        if (err) return reject(err);
         resolve(metadata);
       });
     });
 
-    // const videoPath = path.join(__dirname, '..', req.file.path);
-    const format = path.extname(req.file.originalname).substring(1);
+    // Video information for storing in the database
     const duration = metadata.format.duration;
     const size = req.file.size;
     const title = req.file.originalname;
-    const videoId = uuidv4();
-    const userId = req.user ? req.user.id : 'anonymous';  // Use "anonymous" for unauthenticated users
-    const videoURL = await getURL(videoKey);
+    const userId = req.user ? req.user.id : 'anonymous';
 
     const videoData = {
       'qut-username': process.env.QUT_USERNAME,
-      videoId: videoId,
-      title: title || 'Untitled Video',
+      videoId,
+      title,
       originalVideoPath: videoURL,
-      format: format,
-      size: size,
-      duration: duration,
-      //thumbnailPath: thumbnailPath,
-      userId: userId,
+      format,
+      size,
+      duration,
+      thumbnailPath: thumbnailURL,
+      s3Key: videoId,
+      userId,
       transcodedVideoPath: null,
     };
 
-    // Cleanup: Delete the temporary files
-    // fs.unlinkSync(tempFilePath);
-    // fs.unlinkSync(thumbnailPath);
-    
-    // Save the video data to DynamoDB
+    // Cleanup temp files
+    try {
+      fs.unlinkSync(thumbnailPath);
+    } catch (cleanupErr) {
+      console.warn('Error cleaning up temp files:', cleanupErr.message);
+    }
+
+    // Save video data to DynamoDB
     await createVideo(videoData);
-
-    // Generate a thumbnail from video data
-    // const thumbnailBuffer = await new Promise((resolve, reject) => {
-    //   // Use a PassThrough stream for processing
-    //   const passThrough = new PassThrough();
-    //   passThrough.end(req.file.buffer); // End the stream with the buffer data
-
-    //   ffmpeg()
-    //     .input(passThrough)
-    //     .screenshots({
-    //       timestamps: ['00:00:10.000'],
-    //       size: '320x240',
-    //       // No need to specify folder or filename
-    //     })
-    //     .on('end', () => {
-    //       // ffmpeg does not provide a direct way to handle the screenshot buffer
-    //       // Ensure the 'end' event gets triggered to complete processing
-    //       passThrough.end(); 
-    //     })
-    //     .on('error', (err) => {
-    //       console.error('FFmpeg Error:', err); // Detailed error logging
-    //       reject(err);
-    //     })
-    //     .on('data', (data) => {
-    //       resolve(data); // Resolve with the screenshot data
-    //       reject(err);
-    //     });
-    // });
-     
-    //  // Upload thumbnails to S3
-    //  const thumbnailKey = `thumbnails/${Date.now()}_thumbnail.png`;
-    //  await putObject(thumbnailKey, thumbnailBuffer);
-
     return res.status(201).json(videoData);
 
   } catch (err) {
+    console.error('Error processing video upload:', err.message);
     return res.status(500).json({ message: 'Error processing video upload.', error: err.message });
   }
 };
 
+// Function to safely download a file from S3
+function downloadFileFromS3(url, outputPath) {
+  return new Promise((resolve, reject) => {
+    const file = fs.createWriteStream(outputPath);
+    https.get(url, (response) => {
+      if (response.statusCode !== 200) {
+        console.error(`Failed to download file: Status code ${response.statusCode}`);
+        return reject(new Error(`Failed to download file: ${response.statusCode}`));
+      }
+
+      response.pipe(file);
+      file.on('finish', () => {
+        file.close(() => {
+          console.log(`Downloaded successfully to ${outputPath}`);
+          resolve();
+        });
+      });
+    }).on('error', (err) => {
+      console.error('Error during download:', err.message);
+      fs.unlink(outputPath, () => reject(err));
+    });
+  });
+}
 exports.convertVideo = async (req, res) => {
   try {
-    console.log('here');
     const videoId = req.body.videoId;
-
     if (!videoId) {
       return res.status(400).json({ message: 'No video ID provided.' });
     }
@@ -143,17 +134,25 @@ exports.convertVideo = async (req, res) => {
       return res.status(404).json({ message: 'Video not found.' });
     }
 
-    // const transcodedDir = path.join(__dirname, '..', 'transcoded_videos');
-    // if (!fs.existsSync(transcodedDir)) {
-    //   fs.mkdirSync(transcodedDir, { recursive: true });
-    // }
+    const videoURL = video.originalVideoPath;
+    const originalExtension = path.extname(new URL(videoURL).pathname);
+    const tempVideoPath = `/tmp/${videoId}${originalExtension}`;
 
-    // Generate a unique key for the transcoded video in S3
-    //const outputKey = `transcoded/${Date.now()}_${path.basename(video.originalVideoPath, path.extname(video.originalVideoPath))}.${req.body.format.toLowerCase()}`;
-    const outputKey = `transcoded/${path.basename(video.originalVideoPath, path.extname(video.originalVideoPath))}.${req.body.format.toLowerCase()}`;
+    // Download the video to a temporary path
+    console.log(`Downloading video from ${videoURL} to ${tempVideoPath}`);
+    await downloadFileFromS3(videoURL, tempVideoPath);
 
+    if (!fs.existsSync(tempVideoPath)) {
+      throw new Error(`File not downloaded correctly to ${tempVideoPath}`);
+    }
 
-    // Set headers for Server-Sent Events (SSE)
+    // Set up the output format and path
+    const outputFormat = req.body.format.toLowerCase();
+    const outputKey = `transcoded/${videoId}.${outputFormat}`;
+    const outputUrl = await getURLIncline(outputKey);
+    console.log("Output URL:", outputUrl);
+
+    // Set headers for SSE
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
@@ -162,15 +161,19 @@ exports.convertVideo = async (req, res) => {
     let lastProgress = 0;
     const MIN_PROGRESS_INCREMENT = 1;
 
-    // Create a PassThrough stream
+    // Create a PassThrough stream for upload
     const passThroughStream = new PassThrough();
-
-    // Start uploading the video to S3 while ffmpeg processes the video
     const uploadPromise = putObject(outputKey, passThroughStream);
 
-    const ffmpegProcess = ffmpeg(video.originalVideoPath)
-      .outputFormat(req.body.format.toLowerCase())
-      .on('start', (commandLine) => { })
+    // Use FFmpeg to process the video
+    ffmpeg(tempVideoPath)
+      .outputFormat(outputFormat)
+      .outputOptions('-movflags frag_keyframe+empty_moov+default_base_moof') // Options for MP4 compatibility
+      .videoCodec('libx264')
+      .audioCodec('aac')
+      .on('start', (commandLine) => {
+        console.log('Started ffmpeg with command:', commandLine);
+      })
       .on('codecData', (data) => {
         const durationParts = data.duration.split(':');
         totalDuration = parseFloat(durationParts[0]) * 3600 + parseFloat(durationParts[1]) * 60 + parseFloat(durationParts[2]);
@@ -188,27 +191,31 @@ exports.convertVideo = async (req, res) => {
         }
       })
       .on('end', async () => {
-        // Wait the transcoded video path in the database
         await uploadPromise;
-        const outputPath = `${process.env.S3_BUCKET}/${outputKey}`;
-        await updateVideoTranscodedPath(videoId, outputPath);
+        await updateVideoTranscodedPath(videoId, outputUrl, outputFormat);
         res.write('data: 100\n\n');
         res.end();
+        fs.unlinkSync(tempVideoPath);
       })
       .on('error', (err) => {
+        console.error('Error during transcoding:', err.message);
         res.write('data: error\n\n');
         res.end();
+        if (fs.existsSync(tempVideoPath)) {
+          fs.unlinkSync(tempVideoPath);
+        }
       })
-      .pipe(passThroughStream); // Pipe the ffmpeg output to the PassThrough stream
+      .pipe(passThroughStream); // Use .pipe() to handle streaming to the upload
 
     req.on('close', () => {
-      ffmpegProcess.kill();
+      if (fs.existsSync(tempVideoPath)) {
+        fs.unlinkSync(tempVideoPath);
+      }
     });
 
-    ffmpegProcess.run();
-
   } catch (err) {
-    return res.status(500).json({ message: 'Error during transcoding.', error: err });
+    console.error('Error during transcoding:', err.message);
+    return res.status(500).json({ message: 'Error during transcoding.', error: err.message });
   }
 };
 
@@ -216,18 +223,26 @@ exports.convertVideo = async (req, res) => {
 exports.downloadVideo = async (req, res) => {
   try {
     const video = await getVideoById(req.params.id);
-    console.log('Retrieved video:', video);
     if (!video || !video.transcodedVideoPath) {
       return res.status(404).json({ message: 'Video or transcoded file not found.' });
     }
+    // Get the video file from S3
+    const trasncodedKey = `transcoded/${video.videoId}.${video.transcodedFormat}`;
+    console.log("test", video.transcodedFormat)
+    const s3Stream = await getObject(trasncodedKey);
 
-    res.download(video.transcodedVideoPath, err => {
-      if (err) {
-        return res.status(500).json({ message: 'Error during file download.', error: err });
-      }
+    // Set headers for the file download
+    res.setHeader('Content-Disposition', `attachment; filename="${video.title || 'video.mp4'}"`);
+    res.setHeader('Content-Type', 'video/mp4'); // Adjust this based on the video content type
+
+    // Pipe the S3 stream directly to the response
+    s3Stream.Body.pipe(res).on('error', (err) => {
+      console.error('Error streaming file:', err);
+      return res.status(500).json({ message: 'Error during file download.', error: err });
     });
 
   } catch (err) {
+    console.error('Error finding video:', err);
     return res.status(500).json({ message: 'Error finding video.', error: err });
   }
 };
@@ -240,21 +255,12 @@ exports.deleteVideo = async (req, res) => {
     if (!video) {
       return res.status(404).json({ message: 'Video not found' });
     }
-
-    // Resolve paths for original, thumbnail, and transcoded files
-    const originalVideoPath = path.resolve(video.originalVideoPath);
-    const thumbnailPath = path.resolve(video.thumbnailPath);
-    const transcodedVideoPath = video.transcodedVideoPath ? path.resolve(video.transcodedVideoPath) : null;
-
-    // Delete associated files if they exist
-    if (fs.existsSync(originalVideoPath)) fs.unlinkSync(originalVideoPath);
-    else console.warn(`Original video file not found: ${originalVideoPath}`);
-
-    if (fs.existsSync(thumbnailPath)) fs.unlinkSync(thumbnailPath);
-    else console.warn(`Thumbnail file not found: ${thumbnailPath}`);
-
-    if (transcodedVideoPath && fs.existsSync(transcodedVideoPath)) fs.unlinkSync(transcodedVideoPath);
-    else console.warn(`Transcoded video file not found: ${transcodedVideoPath}`);
+    const key = video.s3Key;
+    const format = video.format
+    // Delete the video from S3
+    await deleteObject(`uploads/${key}.${format}`);
+    await deleteObject(`transcoded/${key}`);
+    await deleteObject(`thumbnails/${key}.png`);
 
     // Delete the video record from DynamoDB
     await deleteVideoRecord(videoId);
@@ -288,59 +294,72 @@ exports.reformatVideo = async (req, res) => {
       return res.status(404).json({ message: 'Video not found' });
     }
 
-    const inputPath = path.resolve(video.transcodedVideoPath);
-    console.log('Input Path:', inputPath);
-
-    const outputFilename = `video-${Date.now()}-transcoded.${req.body.format}`;
-    const outputPath = path.resolve(__dirname, '../transcoded_videos', outputFilename);
-
-    if (!fs.existsSync(path.dirname(outputPath))) {
-      fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+    const inputPath = video.originalVideoPath;
+    if (!inputPath) {
+      return res.status(400).json({ message: 'Original transcoded path is missing.' });
     }
 
+    const outputFormat = req.body.format.toLowerCase();
+    const outputKey = `transcoded/${video.videoId}.${outputFormat}`;
+    const outputUrl = await getURLIncline(outputKey);
+
+    // Set response headers for server-sent events
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
 
     let totalDuration = 0;
     let lastProgress = 0;
+    const MIN_PROGRESS_INCREMENT = 1;
 
-    const ffmpegProcess = ffmpeg(inputPath)
-      .toFormat(req.body.format)
-      .output(outputPath)
-      .on('start', (commandLine) => { })
+    const passThroughStream = new PassThrough();
+    const uploadPromise = putObject(outputKey, passThroughStream);
+
+    // Use FFmpeg to reformat the video
+    ffmpeg(inputPath)
+      .outputFormat(outputFormat)
+      .outputOptions('-movflags frag_keyframe+empty_moov+default_base_moof') // For MP4 compatibility
+      .videoCodec('libx264')
+      .audioCodec('aac')
+      .on('start', (commandLine) => {
+        console.log('Started ffmpeg with command:', commandLine);
+      })
       .on('codecData', (data) => {
+        // Calculate total duration of the video from codec data
         const durationParts = data.duration.split(':');
         totalDuration = parseFloat(durationParts[0]) * 3600 + parseFloat(durationParts[1]) * 60 + parseFloat(durationParts[2]);
       })
       .on('progress', (progress) => {
+        // Calculate the current progress percentage
         const timeParts = progress.timemark.split(':');
         const currentTime = parseFloat(timeParts[0]) * 3600 + parseFloat(timeParts[1]) * 60 + parseFloat(timeParts[2]);
-        const percentComplete = Math.round((currentTime / totalDuration) * 100);
+        let percentComplete = (currentTime / totalDuration) * 100;
 
-        if (percentComplete > lastProgress) {
-          res.write(`data: ${percentComplete}\n\n`);
-          lastProgress = percentComplete;
+        // Send progress updates to the client
+        if (!isNaN(percentComplete) && percentComplete > lastProgress) {
+          if ((percentComplete - lastProgress) >= MIN_PROGRESS_INCREMENT) {
+            res.write(`data: ${Math.round(percentComplete)}\n\n`);
+            lastProgress = percentComplete;
+          }
         }
       })
       .on('end', async () => {
-        await updateVideoTranscodedPath(video.videoId, outputPath);
+        // Complete the upload process and update the database
+        await uploadPromise;
+        await updateVideoTranscodedPath(video.videoId, outputUrl, outputFormat);
         res.write('data: 100\n\n');
         res.end();
       })
       .on('error', (err) => {
-        res.write(`data: error\n\n`);
+        console.error('Error during reformatting:', err.message);
+        res.write('data: error\n\n');
         res.end();
-      });
-
-    req.on('close', () => {
-      ffmpegProcess.kill();
-    });
-
-    ffmpegProcess.run();
+      })
+      .pipe(passThroughStream); // Stream the FFmpeg output to the PassThrough stream
 
   } catch (err) {
     console.error('Error in reformatVideo controller:', err.message);
     res.status(500).json({ message: 'Internal server error', error: err.message });
   }
 };
+
