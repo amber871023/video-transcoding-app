@@ -26,8 +26,8 @@ const Register = () => {
     setError('');
     try {
       const response = await axios.post(`${baseUrl}/users/register`, { email, username, password });
-      const { token, username: registeredUsername } = response.data;
-      login({ token, username: registeredUsername });
+      const { idToken, username: registeredUsername } = response.data;
+      login({ idToken, username: registeredUsername });
 
       toast({
         title: 'Registration successful.',

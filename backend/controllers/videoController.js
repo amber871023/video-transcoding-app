@@ -275,6 +275,7 @@ exports.deleteVideo = async (req, res) => {
 exports.getUserVideos = async (req, res) => {
   try {
     const userId = req.user.id;
+    console.log(userId)
     if (!userId) {
       return res.status(400).json({ error: true, msg: 'User ID not found in request.' });
     }

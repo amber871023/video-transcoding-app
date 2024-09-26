@@ -15,7 +15,6 @@ const optAuth = async (req, res, next) => {
       const email = idTokenResult.email;
       const userId = idTokenResult.sub;
       const username = idTokenResult.username;
-      console.log(userId)
       req.user = { id: userId, email: email, username: username };
     } catch (err) {
       console.log("Token is not valid:", err.message);

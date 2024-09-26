@@ -25,8 +25,8 @@ const LoginPage = () => {
     setError('');
     try {
       const response = await axios.post(`${baseUrl}/users/login`, { email, password }); // Changed to send email
-      const { token, username } = response.data;
-      login({ token, username });
+      const { idToken, username } = response.data;
+      login({ idToken, username });
       toast({
         title: 'Login successful.',
         status: 'success',

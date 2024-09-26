@@ -1,4 +1,5 @@
 import React, { createContext, useState, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const AuthContext = createContext();
 
@@ -6,13 +7,14 @@ const AuthContext = createContext();
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
-  const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('token'));
+  const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('idToken'));
   const [username, setUsername] = useState(() => localStorage.getItem('username') || '');
+  const navigate = useNavigate();
 
   const login = (userData) => {
     setIsLoggedIn(true);
     setUsername(userData.username);
-    localStorage.setItem('token', userData.token);
+    localStorage.setItem('token', userData.idToken);
     localStorage.setItem('username', userData.username);
   };
 
@@ -21,6 +23,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('username');
     setIsLoggedIn(false);
     setUsername('');
+    navigate('/');
   };
 
   return (

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Box, HStack, Button, Image, VStack, useDisclosure, IconButton, Collapse, Menu, MenuButton, MenuList, MenuItem, MenuDivider, Text,
+  Box, HStack, Button, Image, useDisclosure, IconButton, Menu, MenuButton, MenuList, MenuItem, MenuDivider, Text,
 } from '@chakra-ui/react';
 import { HamburgerIcon } from '@chakra-ui/icons';
 import { Link, useNavigate } from 'react-router-dom';

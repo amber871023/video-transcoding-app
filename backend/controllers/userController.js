@@ -1,5 +1,4 @@
 const bcrypt = require('bcrypt');
-const { secretKey } = require('../middlewares/auth');
 const { createUser, getUserByEmail } = require('../models/User');
 const { signUp, getAuthTokens, confirmUser, verifyToken, groupUser } = require('../services/Cognito');
 
@@ -31,7 +30,6 @@ const registerUser = async (req, res) => {
     }
     groupUser(username, groupName);
 
-    // Confirm user
     await confirmUser(username);
 
     // Get token
@@ -80,10 +78,10 @@ const loginUser = async (req, res) => {
 
     // Decode the token
     const decodeToken = (token) => {
-      const base64Url = token.split('.')[1]; // Get the payload part of the token
+      const base64Url = token.split('.')[1];
       const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/'); // Replace URL-safe characters
       const decodedPayload = Buffer.from(base64, 'base64').toString('utf-8'); // Decode base64 to a string
-      const payload = JSON.parse(decodedPayload); // Parse the decoded payload
+      const payload = JSON.parse(decodedPayload);
       return payload;
     }
     const decodedToken = decodeToken(idToken)

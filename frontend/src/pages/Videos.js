@@ -9,6 +9,7 @@ import { FaHome, FaExchangeAlt, FaDownload, FaTrash } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import CustomButton from '../components/CustomButton';
 import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
 
 const formatDuration = (durationInSeconds) => {
   const minutes = Math.floor(durationInSeconds / 60);
@@ -18,6 +19,7 @@ const formatDuration = (durationInSeconds) => {
 
 const baseUrl = "http://localhost:3001";
 // const baseUrl = "http://3.25.117.203:3001";
+// const baseUrl = "http://group50.cab432.com:3001";
 
 const VideoPage = () => {
   const [videos, setVideos] = useState([]);
@@ -31,12 +33,14 @@ const VideoPage = () => {
   const cancelRef = React.useRef();
   const toast = useToast();
   const navigate = useNavigate();
+  const { isLoggedIn } = useAuth();
 
   const fetchVideos = async () => {
     try {
+      const token = localStorage.getItem('token');
       const response = await axios.get(`${baseUrl}/videos/`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${token}`,
         },
       });
       const videosWithUrls = response.data.map(video => {
@@ -57,7 +61,9 @@ const VideoPage = () => {
     }
   };
   useEffect(() => {
-    fetchVideos();
+    if (isLoggedIn) {
+      fetchVideos();
+    }
   }, [toast]);
 
   const handleReformat = async () => {

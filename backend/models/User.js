@@ -9,7 +9,6 @@ const userTableName = "n11422807-users";
 const client = new DynamoDB.DynamoDBClient({ region: 'ap-southeast-2' });
 const docClient = DynamoDBLib.DynamoDBDocumentClient.from(client);
 
-// Create User Function
 async function createUser({ email, username, passwordHash, userId }) {
 
   const command = new DynamoDBLib.PutCommand({
