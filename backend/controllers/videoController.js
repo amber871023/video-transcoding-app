@@ -67,7 +67,7 @@ exports.uploadVideo = async (req, res) => {
     const size = req.file.size;
     const title = req.file.originalname;
     const userId = req.user ? req.user.id : 'anonymous';
-
+    console.log("print", userId)
     const videoData = {
       'qut-username': process.env.QUT_USERNAME,
       videoId,
@@ -112,7 +112,6 @@ function downloadFileFromS3(url, outputPath) {
       response.pipe(file);
       file.on('finish', () => {
         file.close(() => {
-          console.log(`Downloaded successfully to ${outputPath}`);
           resolve();
         });
       });
@@ -139,7 +138,6 @@ exports.convertVideo = async (req, res) => {
     const tempVideoPath = `/tmp/${videoId}${originalExtension}`;
 
     // Download the video to a temporary path
-    console.log(`Downloading video from ${videoURL} to ${tempVideoPath}`);
     await downloadFileFromS3(videoURL, tempVideoPath);
 
     if (!fs.existsSync(tempVideoPath)) {
@@ -150,7 +148,6 @@ exports.convertVideo = async (req, res) => {
     const outputFormat = req.body.format.toLowerCase();
     const outputKey = `transcoded/${videoId}.${outputFormat}`;
     const outputUrl = await getURLIncline(outputKey);
-    console.log("Output URL:", outputUrl);
 
     // Set headers for SSE
     res.setHeader('Content-Type', 'text/event-stream');
@@ -172,7 +169,6 @@ exports.convertVideo = async (req, res) => {
       .videoCodec('libx264')
       .audioCodec('aac')
       .on('start', (commandLine) => {
-        console.log('Started ffmpeg with command:', commandLine);
       })
       .on('codecData', (data) => {
         const durationParts = data.duration.split(':');
@@ -228,7 +224,6 @@ exports.downloadVideo = async (req, res) => {
     }
     // Get the video file from S3
     const trasncodedKey = `transcoded/${video.videoId}.${video.transcodedFormat}`;
-    console.log("test", video.transcodedFormat)
     const s3Stream = await getObject(trasncodedKey);
 
     // Set headers for the file download
@@ -323,7 +318,6 @@ exports.reformatVideo = async (req, res) => {
       .videoCodec('libx264')
       .audioCodec('aac')
       .on('start', (commandLine) => {
-        console.log('Started ffmpeg with command:', commandLine);
       })
       .on('codecData', (data) => {
         // Calculate total duration of the video from codec data

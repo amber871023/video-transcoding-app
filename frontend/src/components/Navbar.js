@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Box, HStack, Button, Image, useDisclosure, IconButton, Menu, MenuButton, MenuList, MenuItem, MenuDivider, Text,
+  Box, HStack, Button, Image, IconButton, Menu, MenuButton, MenuList, MenuItem, MenuDivider, Text,
 } from '@chakra-ui/react';
 import { HamburgerIcon } from '@chakra-ui/icons';
 import { Link, useNavigate } from 'react-router-dom';
@@ -9,7 +9,6 @@ import logo from '../assets/logo.png';
 
 const Navbar = () => {
   const { isLoggedIn, logout, username } = useAuth(); // Assuming `user` contains the username
-  const { isOpen, onToggle } = useDisclosure();
   const navigate = useNavigate();
 
   return (

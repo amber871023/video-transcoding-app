@@ -14,12 +14,12 @@ export const AuthProvider = ({ children }) => {
   const login = (userData) => {
     setIsLoggedIn(true);
     setUsername(userData.username);
-    localStorage.setItem('token', userData.idToken);
+    localStorage.setItem('idToken', userData.idToken);
     localStorage.setItem('username', userData.username);
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
+    localStorage.removeItem('idToken');
     localStorage.removeItem('username');
     setIsLoggedIn(false);
     setUsername('');

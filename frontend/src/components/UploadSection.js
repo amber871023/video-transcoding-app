@@ -59,7 +59,7 @@ const UploadSection = () => {
 
       const response = await axios.post(`${baseUrl}/videos/upload`, formData, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('idToken')}`,
         },
         onUploadProgress: (progressEvent) => {
           const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
@@ -136,7 +136,7 @@ const UploadSection = () => {
         method: 'POST',
         body: formData,
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('idToken')}`,
         },
       });
 
@@ -179,7 +179,7 @@ const UploadSection = () => {
       const response = await fetch(`${baseUrl}/videos/download/${file.videoId}`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('idToken')}`,
         },
       });
 
@@ -230,7 +230,7 @@ const UploadSection = () => {
       try {
         await axios.delete(`${baseUrl}/videos/delete/${videoToDelete.videoId}`, {
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Authorization': `Bearer ${localStorage.getItem('idToken')}`,
           },
         });
         setVideoFiles(prevFiles => prevFiles.filter((_, i) => i !== index));

@@ -27,7 +27,7 @@ async function createVideo(video) {
 
   try {
     await docClient.send(command);
-    console.log('Video created successfully');
+    // console.log('Video created successfully');
   } catch (err) {
     console.error('Error creating video:', err);
     throw err;
@@ -96,7 +96,7 @@ async function updateVideoTranscodedPath(videoId, transcodedPath, transcodedForm
 
   try {
     const response = await docClient.send(command);
-    console.log('Video updated with transcoded path and format:', response);
+    // console.log('Video updated with transcoded path and format:', response);
     return response.Attributes;
   } catch (err) {
     console.error('Error updating transcoded video path and format:', err);
@@ -117,7 +117,7 @@ async function deleteVideoRecord(videoId) {
 
   try {
     const response = await docClient.send(command);
-    console.log('Video record deleted successfully:', response);
+    // console.log('Video record deleted successfully:', response);
   } catch (err) {
     console.error('Error deleting video record:', err);
     throw err;

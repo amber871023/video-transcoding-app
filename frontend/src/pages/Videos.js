@@ -37,7 +37,7 @@ const VideoPage = () => {
 
   const fetchVideos = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('idToken');
       const response = await axios.get(`${baseUrl}/videos/`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -78,7 +78,7 @@ const VideoPage = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('idToken')}`,
         },
         body: JSON.stringify({ format: format.toLowerCase() }),
       });
@@ -142,7 +142,7 @@ const VideoPage = () => {
       const response = await fetch(downloadUrl, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('idToken')}`,
         },
       });
 
@@ -179,7 +179,6 @@ const VideoPage = () => {
 
   const handlePlayVideo = (videoId) => {
     const video = videos.find(v => v.videoId === videoId);
-    console.log(video)
     if (video && video.videoUrl) {
       setPlayingVideoId(videoId);
     } else {
@@ -201,7 +200,7 @@ const VideoPage = () => {
     try {
       await axios.delete(`${baseUrl}/videos/delete/${videoToDelete}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('idToken')}`,
         },
       });
       setVideos(videos.filter(video => video.videoId !== videoToDelete));

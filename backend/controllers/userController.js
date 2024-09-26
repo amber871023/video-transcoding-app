@@ -40,11 +40,10 @@ const registerUser = async (req, res) => {
 
     const saltRounds = 10;
     const passwordHash = await bcrypt.hash(password, saltRounds);
-    console.log(passwordHash)
     // // // Create use in DynamoDB
     const newUser = await createUser({ email, username, passwordHash, userId });
 
-    res.status(201).json({ error: false, msg: "User registered successfully", username: username, token: idToken });
+    res.status(201).json({ error: false, msg: "User registered successfully", username: username, idToken });
   } catch (err) {
     console.error('Error during user registration:', err.message);
     res.status(500).json({ error: true, msg: "Server error", err: err.message });
@@ -73,7 +72,6 @@ const loginUser = async (req, res) => {
     const username = user.username
     // Get token
     const response = await getAuthTokens(username, password);
-    console.log("RESPONSE", response);
     const idToken = response.idToken;
 
     // Decode the token
