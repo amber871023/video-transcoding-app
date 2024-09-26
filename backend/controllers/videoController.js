@@ -1,13 +1,13 @@
-const path = require('path');
-const fs = require('fs');
-const ffmpeg = require('fluent-ffmpeg');
-const { putObject, getObject, getURLIncline, deleteObject } = require('../services/S3');
-const { PassThrough } = require('stream');
-const { createVideo, getVideoById, getVideosByUserId, updateVideoTranscodedPath, deleteVideoRecord } = require('../models/Video');
-const { v4: uuidv4 } = require('uuid');
-const https = require('https');
+import path from 'path';
+import fs from 'fs';
+import ffmpeg from 'fluent-ffmpeg';
+import { putObject, getObject, getURLIncline, deleteObject } from '../services/S3.js';
+import { PassThrough } from 'stream';
+import { createVideo, getVideoById, getVideosByUserId, updateVideoTranscodedPath, deleteVideoRecord } from '../models/Video.js';
+import { v4 as uuidv4 } from 'uuid';
+import https from 'https';
 
-exports.uploadVideo = async (req, res) => {
+export const uploadVideo = async (req, res) => {
   try {
     if (!req.file || !req.file.buffer) {
       return res.status(400).json({ message: 'No file uploaded.' });
@@ -121,7 +121,7 @@ function downloadFileFromS3(url, outputPath) {
     });
   });
 }
-exports.convertVideo = async (req, res) => {
+export const convertVideo = async (req, res) => {
   try {
     const videoId = req.body.videoId;
     if (!videoId) {
@@ -216,7 +216,7 @@ exports.convertVideo = async (req, res) => {
 };
 
 // Download Video
-exports.downloadVideo = async (req, res) => {
+export const downloadVideo = async (req, res) => {
   try {
     const video = await getVideoById(req.params.id);
     if (!video || !video.transcodedVideoPath) {
@@ -242,7 +242,7 @@ exports.downloadVideo = async (req, res) => {
   }
 };
 
-exports.deleteVideo = async (req, res) => {
+export const deleteVideo = async (req, res) => {
   try {
     const videoId = req.params.id;
 
@@ -267,7 +267,7 @@ exports.deleteVideo = async (req, res) => {
   }
 };
 
-exports.getUserVideos = async (req, res) => {
+export const getUserVideos = async (req, res) => {
   try {
     const userId = req.user.id;
     console.log(userId)
@@ -283,7 +283,7 @@ exports.getUserVideos = async (req, res) => {
 };
 
 // Reformat Video
-exports.reformatVideo = async (req, res) => {
+export const reformatVideo = async (req, res) => {
   try {
     const video = await getVideoById(req.params.id);
     if (!video) {

@@ -1,26 +1,28 @@
-const S3 = require('@aws-sdk/client-s3');
-const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
-const { Upload } = require('@aws-sdk/lib-storage'); // Import for better handling of stream uploads
+import { S3Client, CreateBucketCommand, PutBucketTaggingCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { Upload } from '@aws-sdk/lib-storage';
 
 // S3 configuration
 const bucketName = 'group50';
 const qutUsername = 'n11404680@qut.edu.au';
 const purpose = 'assessment-2';
-const s3Client = new S3.S3Client({ region: 'ap-southeast-2' });
+const s3Client = new S3Client({ region: 'ap-southeast-2' });
 
 // Function to create a bucket (if needed)
-exports.createBucket = async () => {
+export async function createBucket() {
     try {
-        const response = await s3Client.createBucket({ Bucket: bucketName });
+        const command = new CreateBucketCommand({ Bucket: bucketName });
+        const response = await s3Client.send(command);
         console.log(response.Location);
     } catch (err) {
         console.log(err);
     }
-};
+}
 
-exports.tagBucket = async () => {
+// Function to tag a bucket
+export async function tagBucket() {
     try {
-        const response = await s3Client.putBucketTagging({
+        const command = new PutBucketTaggingCommand({
             Bucket: bucketName,
             Tagging: {
                 TagSet: [
@@ -29,14 +31,15 @@ exports.tagBucket = async () => {
                 ]
             }
         });
+        const response = await s3Client.send(command);
         console.log("Bucket tagged:", response);
     } catch (err) {
         console.log(err);
     }
-};
+}
 
 // Upload an object to S3 using the Upload class
-exports.putObject = async (key, body) => {
+export async function putObject(key, body) {
     try {
         const upload = new Upload({
             client: s3Client,
@@ -55,12 +58,12 @@ exports.putObject = async (key, body) => {
         console.error('Error uploading to S3:', err);
         throw err;
     }
-};
+}
 
 // Function to generate a presigned URL for accessing an object
-exports.getURL = async (key) => {
+export async function getURL(key) {
     try {
-        const command = new S3.GetObjectCommand({
+        const command = new GetObjectCommand({
             Bucket: bucketName,
             Key: key
         });
@@ -70,12 +73,12 @@ exports.getURL = async (key) => {
         console.error('Error getting object from S3:', err);
         throw err;
     }
-};
+}
 
 // Function to retrieve an object from S3
-exports.getObject = async (key) => {
+export async function getObject(key) {
     try {
-        const command = new S3.GetObjectCommand({
+        const command = new GetObjectCommand({
             Bucket: bucketName,
             Key: key
         });
@@ -86,12 +89,12 @@ exports.getObject = async (key) => {
         console.error('Error getting object from S3:', err);
         throw err;
     }
-};
+}
 
 // Read the presigned URL from S3
-exports.getURLIncline = async (key) => {
+export async function getURLIncline(key) {
     try {
-        const command = new S3.GetObjectCommand({
+        const command = new GetObjectCommand({
             Bucket: bucketName,
             Key: key,
             ResponseContentDisposition: 'inline'
@@ -102,12 +105,12 @@ exports.getURLIncline = async (key) => {
         console.error('Error getting object from S3: ', err);
         throw err;
     }
-};
+}
 
 // Delete an object from S3
-exports.deleteObject = async (key) => {
+export async function deleteObject(key) {
     try {
-        const command = new S3.DeleteObjectCommand({
+        const command = new DeleteObjectCommand({
             Bucket: bucketName,
             Key: key
         });
@@ -118,4 +121,4 @@ exports.deleteObject = async (key) => {
         console.log("Error deleting object: ", err);
         throw err;
     }
-};
+}

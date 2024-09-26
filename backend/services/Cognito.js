@@ -1,69 +1,64 @@
-const Cognito = require('@aws-sdk/client-cognito-identity-provider');
-const client = new Cognito.CognitoIdentityProviderClient({ region: 'ap-southeast-2' });
-const jwt = require("aws-jwt-verify");
+import { CognitoIdentityProviderClient, SignUpCommand, AdminAddUserToGroupCommand, AdminConfirmSignUpCommand, InitiateAuthCommand } from '@aws-sdk/client-cognito-identity-provider';
+import { CognitoJwtVerifier } from 'aws-jwt-verify';
+
+const client = new CognitoIdentityProviderClient({ region: 'ap-southeast-2' });
 
 const clientId = '6qsb305b0v74lhuttbodun3men';
 const userPoolId = 'ap-southeast-2_ikcu5JEvN';
 
-// Sign up users
-exports.signUp = async (username, password, email) => {
+export async function signUp(username, password, email) {
   console.log("Signing up user");
   try {
-    command = new Cognito.SignUpCommand({
+    const command = new SignUpCommand({
       ClientId: clientId,
-      userPoolId: userPoolId,
       Username: username,
       Password: password,
-      MessageAction: 'SUPPRESS',
       UserAttributes: [{ Name: "email", Value: email }],
-    })
+    });
     const response = await client.send(command);
     return response;
   } catch (err) {
     if (err.name === 'UsernameExistsException') {
       return { error: "User already exists" };
-    }
-    else {
-      // Handle other errors
-      // console.log("Sign-up error: ", err);
+    } else {
       return { error: "Sign-up failed. Please try again later." };
     }
   }
 }
 
-// Group users
-exports.groupUser = async (username, group) => {
+// Function to group users
+export async function groupUser(username, group) {
   try {
-    command = {
+    const command = new AdminAddUserToGroupCommand({
       GroupName: group,
       Username: username,
-      UserPoolId: userPoolId
-    };
-    const groupCommand = new Cognito.AdminAddUserToGroupCommand(command);
-    const response = await client.send(groupCommand);
-    console.log('User added to the group: ', response);
+      UserPoolId: userPoolId,
+    });
+    const response = await client.send(command);
+    console.log('User added to the group:', response);
   } catch (err) {
-    console.log('Error adding user to group: ', err);
+    console.log('Error adding user to group:', err);
   }
 }
 
-// Confirm user automatically
-exports.confirmUser = async (username) => {
+// Function to confirm user automatically
+export async function confirmUser(username) {
   try {
-    command = new Cognito.AdminConfirmSignUpCommand({
+    const command = new AdminConfirmSignUpCommand({
       UserPoolId: userPoolId,
       Username: username,
     });
-    res = await client.send(command);
+    const response = await client.send(command);
+    console.log('User confirmed:', response);
   } catch (err) {
-    console.error(err);
+    console.error('Error confirming user:', err);
   }
 }
 
-// Authenticate user and generate token
-exports.getAuthTokens = async (username, password) => {
+// Function to authenticate user and generate tokens
+export async function getAuthTokens(username, password) {
   try {
-    command = new Cognito.InitiateAuthCommand({
+    const command = new InitiateAuthCommand({
       AuthFlow: "USER_PASSWORD_AUTH",
       AuthParameters: {
         USERNAME: username,
@@ -86,23 +81,25 @@ exports.getAuthTokens = async (username, password) => {
   }
 }
 
-exports.verifyToken = async (token) => {
-  // JWT for verifying ID 
-  const idVerifier = jwt.CognitoJwtVerifier.create({
+// Function to verify the JWT token
+export async function verifyToken(token) {
+  const idVerifier = CognitoJwtVerifier.create({
     userPoolId: userPoolId,
     tokenUse: "id",
     clientId: clientId,
   });
 
-  // Verify the ID token
-  /*Attributes include: sub, email_verified, iss, client_id, origin_jti, aud, evnt_id, token_use, scope
-  exp, username, jti, auth_time, email*/
-  const IdTokenVerifyResult = await idVerifier.verify(token);
-  const currentTime = Math.floor(Date.now() / 1000);
-  if (currentTime > IdTokenVerifyResult.exp) {
-    throw new Error('Token has expired');
+  try {
+    // Verify the ID token
+    const IdTokenVerifyResult = await idVerifier.verify(token);
+    const currentTime = Math.floor(Date.now() / 1000);
+    if (currentTime > IdTokenVerifyResult.exp) {
+      throw new Error('Token has expired');
+    }
+    console.log(IdTokenVerifyResult);
+    return IdTokenVerifyResult;
+  } catch (err) {
+    console.error('Error verifying token:', err);
+    throw err;
   }
-  console.log(IdTokenVerifyResult);
-  return IdTokenVerifyResult;
-
-}   
+}

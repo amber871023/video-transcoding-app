@@ -1,13 +1,19 @@
-const express = require('express');
-const router = express.Router();
-const multer = require('multer');
-const { authorize } = require('../middlewares/auth');
-const optionalAuthorize = require('../middlewares/optAuth');
-const { uploadVideo, convertVideo, downloadVideo, deleteVideo, getUserVideos, reformatVideo } = require('../controllers/videoController');
-const path = require('path');
+import express from 'express';
+import multer from 'multer';
+import path from 'path';
 
+// Middleware imports
+import { authorize } from '../middlewares/auth.js';
+import { optAuth as optionalAuthorize } from '../middlewares/optAuth.js';
+import { uploadVideo, convertVideo, downloadVideo, deleteVideo, getUserVideos, reformatVideo } from '../controllers/videoController.js';
+
+// Setting up router and other utilities
+const router = express.Router();
+
+// Storage setup for multer
 const storage = multer.memoryStorage();
 
+// Multer upload configuration
 const upload = multer({
   storage: storage,
   limits: { fileSize: 200 * 1024 * 1024 }, // 200MB file size limit
@@ -39,7 +45,6 @@ const upload = multer({
   }
 });
 
-
 router.post('/upload', optionalAuthorize, upload.single('video'), uploadVideo);
 router.post('/convert', optionalAuthorize, upload.none(), convertVideo);
 router.post('/reformat/:id', optionalAuthorize, upload.none(), reformatVideo);
@@ -47,5 +52,4 @@ router.delete('/delete/:id', optionalAuthorize, deleteVideo);
 router.get('/download/:id', optionalAuthorize, downloadVideo);
 router.get('/', authorize, getUserVideos);
 
-
-module.exports = router;
+export default router;

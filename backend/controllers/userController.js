@@ -1,9 +1,8 @@
-const bcrypt = require('bcrypt');
-const { createUser, getUserByEmail } = require('../models/User');
-const { signUp, getAuthTokens, confirmUser, verifyToken, groupUser } = require('../services/Cognito');
+import bcrypt from 'bcrypt';
+import { createUser, getUserByEmail } from '../models/User.js';
+import { signUp, getAuthTokens, confirmUser, verifyToken, groupUser } from '../services/Cognito.js';
 
-
-const registerUser = async (req, res) => {
+export const registerUser = async (req, res) => {
   const { email, username, password } = req.body;
 
   if (!email || !username || !password) {
@@ -50,7 +49,7 @@ const registerUser = async (req, res) => {
   }
 };
 
-const loginUser = async (req, res) => {
+export const loginUser = async (req, res) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
@@ -93,4 +92,3 @@ const loginUser = async (req, res) => {
   }
 };
 
-module.exports = { registerUser, loginUser };

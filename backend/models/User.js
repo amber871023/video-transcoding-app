@@ -1,29 +1,25 @@
-const DynamoDB = require('@aws-sdk/client-dynamodb');
-const DynamoDBLib = require('@aws-sdk/lib-dynamodb');
-const { v4: uuidv4 } = require('uuid'); // Import the UUID package
-const { signUp } = require('../services/Cognito');
+import pkg from '@aws-sdk/client-dynamodb'; // Import the package as a default import
+const { DynamoDBClient, QueryCommand, PutCommand } = pkg; // Destructure the required commands from the package
 
-const qutUsername = process.env.QUT_USERNAME;
+const client = new DynamoDBClient({ region: 'ap-southeast-2' });
 const userTableName = "n11422807-users";
 
-const client = new DynamoDB.DynamoDBClient({ region: 'ap-southeast-2' });
-const docClient = DynamoDBLib.DynamoDBDocumentClient.from(client);
-
-async function createUser({ email, username, passwordHash, userId }) {
-
-  const command = new DynamoDBLib.PutCommand({
+// Function to create a user
+export async function createUser({ email, username, passwordHash, userId }) {
+  const command = new PutCommand({
     TableName: userTableName,
     Item: {
-      'qut-username': qutUsername,
+      'qut-username': process.env.QUT_USERNAME,
       userId,
       username,
       passwordHash,
       email,
-      createdAt: new Date().toISOString()
-    }
+      createdAt: new Date().toISOString(),
+    },
   });
+
   try {
-    await docClient.send(command);
+    await client.send(command);
     return { userId, username, email }; // Return the new user data
   } catch (err) {
     console.error('Error creating user:', err);
@@ -32,27 +28,25 @@ async function createUser({ email, username, passwordHash, userId }) {
 }
 
 // Function to get a user by email
-async function getUserByEmail(email) {
-  const command = new DynamoDBLib.QueryCommand({
+export async function getUserByEmail(email) {
+  const command = new QueryCommand({
     TableName: userTableName,
     KeyConditionExpression: '#pk = :username',
     ExpressionAttributeNames: {
-      '#pk': 'qut-username'
+      '#pk': 'qut-username',
     },
     ExpressionAttributeValues: {
       ':username': process.env.QUT_USERNAME,
-      ':email': email
+      ':email': email,
     },
     FilterExpression: 'email = :email',
   });
 
   try {
-    const response = await docClient.send(command);
+    const response = await client.send(command);
     return response.Items[0];
   } catch (err) {
     console.error('Error retrieving user:', err);
     throw err;
   }
 }
-
-module.exports = { createUser, getUserByEmail };

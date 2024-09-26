@@ -8,7 +8,9 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-const baseUrl = "http://localhost:3001"; // Update with your server's base URL
+// const baseUrl = "http://localhost:3001"; // Update with your server's base URL
+const baseUrl = "http://group50.cab432.com:3001";
+
 
 const Register = () => {
   const [email, setEmail] = useState('');

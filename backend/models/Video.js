@@ -1,13 +1,17 @@
-const DynamoDB = require('@aws-sdk/client-dynamodb');
-const DynamoDBLib = require('@aws-sdk/lib-dynamodb');
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient, PutCommand, GetCommand, QueryCommand, UpdateCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
+
+// Environment variables
 const qutUsername = process.env.QUT_USERNAME;
 const videoTableName = "n11422807-videos";
 
-const client = new DynamoDB.DynamoDBClient({ region: 'ap-southeast-2' });
-const docClient = DynamoDBLib.DynamoDBDocumentClient.from(client);
+// Initialize DynamoDB client
+const client = new DynamoDBClient({ region: 'ap-southeast-2' });
+const docClient = DynamoDBDocumentClient.from(client);
 
-async function createVideo(video) {
-  const command = new DynamoDBLib.PutCommand({
+// Create a new video record
+export async function createVideo(video) {
+  const command = new PutCommand({
     TableName: videoTableName,
     Item: {
       'qut-username': qutUsername,
@@ -21,27 +25,26 @@ async function createVideo(video) {
       thumbnailPath: video.thumbnailPath,
       s3Key: video.s3Key,
       userId: video.userId, // Store user ID if logged in, otherwise null
-      createdAt: new Date().toISOString()
-    }
+      createdAt: new Date().toISOString(),
+    },
   });
 
   try {
     await docClient.send(command);
-    // console.log('Video created successfully');
   } catch (err) {
     console.error('Error creating video:', err);
     throw err;
   }
 }
 
-// Get Video by ID
-async function getVideoById(videoId) {
-  const command = new DynamoDBLib.GetCommand({
+// Get video by its ID
+export async function getVideoById(videoId) {
+  const command = new GetCommand({
     TableName: videoTableName,
     Key: {
       'qut-username': qutUsername,
-      videoId: videoId
-    }
+      videoId: videoId,
+    },
   });
 
   try {
@@ -53,9 +56,9 @@ async function getVideoById(videoId) {
   }
 }
 
-// Get Videos by User ID
-async function getVideosByUserId(userId) {
-  const command = new DynamoDBLib.QueryCommand({
+// Get videos by User ID
+export async function getVideosByUserId(userId) {
+  const command = new QueryCommand({
     TableName: videoTableName,
     KeyConditionExpression: '#qutUsername = :qutUsername',
     FilterExpression: '#userId = :userId',
@@ -78,25 +81,24 @@ async function getVideosByUserId(userId) {
   }
 }
 
-// Update Video with Transcoded Path and Format
-async function updateVideoTranscodedPath(videoId, transcodedPath, transcodedFormat) {
-  const command = new DynamoDBLib.UpdateCommand({
+// Update video with transcoded path and format
+export async function updateVideoTranscodedPath(videoId, transcodedPath, transcodedFormat) {
+  const command = new UpdateCommand({
     TableName: videoTableName,
     Key: {
       'qut-username': qutUsername,
-      videoId: videoId
+      videoId: videoId,
     },
     UpdateExpression: 'SET transcodedVideoPath = :transcodedPath, transcodedFormat = :transcodedFormat',
     ExpressionAttributeValues: {
       ':transcodedPath': transcodedPath,
       ':transcodedFormat': transcodedFormat,
     },
-    ReturnValues: 'UPDATED_NEW'
+    ReturnValues: 'UPDATED_NEW',
   });
 
   try {
     const response = await docClient.send(command);
-    // console.log('Video updated with transcoded path and format:', response);
     return response.Attributes;
   } catch (err) {
     console.error('Error updating transcoded video path and format:', err);
@@ -104,30 +106,20 @@ async function updateVideoTranscodedPath(videoId, transcodedPath, transcodedForm
   }
 }
 
-
-// Delete Video Record from DynamoDB
-async function deleteVideoRecord(videoId) {
-  const command = new DynamoDBLib.DeleteCommand({
+// Delete video record from DynamoDB
+export async function deleteVideoRecord(videoId) {
+  const command = new DeleteCommand({
     TableName: videoTableName,
     Key: {
       'qut-username': qutUsername,
-      videoId: videoId
-    }
+      videoId: videoId,
+    },
   });
 
   try {
-    const response = await docClient.send(command);
-    // console.log('Video record deleted successfully:', response);
+    await docClient.send(command);
   } catch (err) {
     console.error('Error deleting video record:', err);
     throw err;
   }
 }
-
-module.exports = {
-  createVideo,
-  getVideoById,
-  getVideosByUserId,
-  updateVideoTranscodedPath,
-  deleteVideoRecord
-};
