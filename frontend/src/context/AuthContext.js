@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext } from 'react';
+import React, { createContext, useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const AuthContext = createContext();
@@ -7,9 +7,20 @@ const AuthContext = createContext();
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
-  const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('idToken'));
-  const [username, setUsername] = useState(() => localStorage.getItem('username') || '');
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [username, setUsername] = useState('');
   const navigate = useNavigate();
+
+  // Initialize state from localStorage when the component mounts
+  useEffect(() => {
+    const storedToken = localStorage.getItem('idToken');
+    const storedUsername = localStorage.getItem('username');
+
+    if (storedToken && storedUsername) {
+      setIsLoggedIn(true);
+      setUsername(storedUsername);
+    }
+  }, []);
 
   const login = (userData) => {
     setIsLoggedIn(true);
