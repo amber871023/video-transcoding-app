@@ -1,6 +1,7 @@
 const DynamoDB = require('@aws-sdk/client-dynamodb');
 const DynamoDBLib = require('@aws-sdk/lib-dynamodb');
 const { v4: uuidv4 } = require('uuid'); // Import the UUID package
+const { signUp } = require('../services/Cognito');
 
 const qutUsername = process.env.QUT_USERNAME;
 const userTableName = "n11422807-users";
@@ -9,8 +10,7 @@ const client = new DynamoDB.DynamoDBClient({ region: 'ap-southeast-2' });
 const docClient = DynamoDBLib.DynamoDBDocumentClient.from(client);
 
 // Create User Function
-async function createUser({ email, username, passwordHash }) {
-  const userId = uuidv4();
+async function createUser({ email, username, passwordHash ,userId}) {
 
   const command = new DynamoDBLib.PutCommand({
     TableName: userTableName,
@@ -25,12 +25,16 @@ async function createUser({ email, username, passwordHash }) {
   });
 
   try {
+    response = signUp(username, password, email);
+
     await docClient.send(command);
-    return { userId, username, email }; // Return the new user data
+    console.log('User creatd in DynamoDB: ', response);
   } catch (err) {
     console.error('Error creating user:', err);
     throw err;
   }
+
+
 }
 
 // Function to get a user by email

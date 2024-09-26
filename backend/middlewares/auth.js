@@ -1,9 +1,9 @@
-const jwt = require("jsonwebtoken");
+const { verifyToken } = require('../services/Cognito');
 
 // Use a fixed secret key (stored in environment variables)
 const secretKey = process.env.JWT_SECRET || 'your-fixed-secret-key'; // Replace with a secure, fixed key
 
-const authorize = (req, res, next) => {
+const authorize = async(req, res, next) => {
   const authorization = req.headers.authorization;
   let token = null;
 
@@ -13,11 +13,13 @@ const authorize = (req, res, next) => {
     return res.status(403).send("Unauthorized");
   }
   try {
-    const decoded = jwt.verify(token, secretKey);
-    if (decoded.exp < Math.floor(Date.now() / 1000)) {
-      return res.status(403).send("Token has expired");
-    }
-    req.user = { id: decoded.id, email: decoded.email }; // Attach user information to request
+    // Verify the token
+    const idTokenResult = await verifyToken(token);
+    // Extract data from the token
+    const userId = idTokenResult.sub;
+    const email = idTokenResult.email;
+    
+    req.user = { id: userId, email: email }; // Attach user information to request
     next();
   } catch (err) {
     res.status(403).json({ error: true, msg: "Token is not valid", err });
