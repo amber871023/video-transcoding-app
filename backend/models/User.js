@@ -10,7 +10,7 @@ const client = new DynamoDB.DynamoDBClient({ region: 'ap-southeast-2' });
 const docClient = DynamoDBLib.DynamoDBDocumentClient.from(client);
 
 // Create User Function
-async function createUser({ email, username, passwordHash ,userId}) {
+async function createUser({ email, username, passwordHash, userId }) {
 
   const command = new DynamoDBLib.PutCommand({
     TableName: userTableName,
@@ -23,18 +23,13 @@ async function createUser({ email, username, passwordHash ,userId}) {
       createdAt: new Date().toISOString()
     }
   });
-
   try {
-    response = signUp(username, password, email);
-
     await docClient.send(command);
-    console.log('User creatd in DynamoDB: ', response);
+    return { userId, username, email }; // Return the new user data
   } catch (err) {
     console.error('Error creating user:', err);
     throw err;
   }
-
-
 }
 
 // Function to get a user by email

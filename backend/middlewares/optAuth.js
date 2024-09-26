@@ -1,6 +1,7 @@
 //This middleware allows unauthenticated access but will attach user information to the request if a valid JWT token is provided.
 //Mainly use for user who don't want to register 
 
+const { verifyToken } = require('../services/Cognito');
 
 const optAuth = async (req, res, next) => {
   const authorization = req.headers.authorization;
@@ -12,10 +13,10 @@ const optAuth = async (req, res, next) => {
       // Verify the token
       const idTokenResult = await verifyToken(token);
       const email = idTokenResult.email;
-      const id =  idTokenResult.sub;
+      const userId = idTokenResult.sub;
       const username = idTokenResult.username;
-
-      req.user = { id: id, email: email, username: username };
+      console.log(userId)
+      req.user = { id: userId, email: email, username: username };
     } catch (err) {
       console.log("Token is not valid:", err.message);
     }

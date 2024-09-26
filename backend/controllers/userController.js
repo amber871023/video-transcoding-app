@@ -1,7 +1,7 @@
 const bcrypt = require('bcrypt');
 const { secretKey } = require('../middlewares/auth');
 const { createUser, getUserByEmail } = require('../models/User');
-const { signUp, getAuthTokens, confirmUser, verifyToken } = require('../services/Cognito');
+const { signUp, getAuthTokens, confirmUser, verifyToken, groupUser } = require('../services/Cognito');
 
 
 const registerUser = async (req, res) => {
@@ -19,32 +19,33 @@ const registerUser = async (req, res) => {
 
     // Create user in Cognito
     const signUpResponse = await signUp(username, password, email);
-    if(signUpResponse.error){
+    if (signUpResponse.error) {
       return res.status(400).json({ error: true, msg: signUpResponse.error });
-    }else(console.log("Successfully registered user!"));
-    
+    } else (console.log("Successfully registered user!"));
+
     let groupName;
-    if(username.startsWith("admin")){
+    if (username.startsWith("admin")) {
       groupName = "admin";
-    }else{
+    } else {
       groupName = "GeneralUsers"
     }
     groupUser(username, groupName);
 
     // Confirm user
     await confirmUser(username);
-    
+
     // Get token
     const tokens = await getAuthTokens(username, password);
     const idToken = tokens.idToken;
-    const resp  = await verifyToken(idToken);
+    const resp = await verifyToken(idToken);
     const userId = resp.sub;
 
     const saltRounds = 10;
     const passwordHash = await bcrypt.hash(password, saltRounds);
+    console.log(passwordHash)
     // // // Create use in DynamoDB
     const newUser = await createUser({ email, username, passwordHash, userId });
-    
+
     res.status(201).json({ error: false, msg: "User registered successfully", username: username, token: idToken });
   } catch (err) {
     console.error('Error during user registration:', err.message);
@@ -69,14 +70,14 @@ const loginUser = async (req, res) => {
     if (!match) {
       return res.status(401).json({ error: true, msg: "Password incorrect" });
     }
-    
-    
-    const username= user.username
+
+
+    const username = user.username
     // Get token
     const response = await getAuthTokens(username, password);
     console.log("RESPONSE", response);
     const idToken = response.idToken;
-    
+
     // Decode the token
     const decodeToken = (token) => {
       const base64Url = token.split('.')[1]; // Get the payload part of the token
@@ -86,11 +87,11 @@ const loginUser = async (req, res) => {
       return payload;
     }
     const decodedToken = decodeToken(idToken)
-    
+
     // Extract expiration time from decodedToken
     const expirationTime = decodedToken.exp;
 
-    res.json({ token_type: "Bearer", idToken, expires_in: expirationTime, username: useer });
+    res.json({ token_type: "Bearer", idToken, expires_in: expirationTime, username: username });
   } catch (err) {
     res.status(500).json({ error: true, msg: "Server error", err: err.message });
   }
