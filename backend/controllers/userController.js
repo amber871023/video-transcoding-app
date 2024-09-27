@@ -1,6 +1,6 @@
 import bcrypt from 'bcrypt';
 import { createUser, getUserByEmail } from '../models/User.js';
-import { signUp, getAuthTokens, confirmUser, verifyToken, groupUser } from '../services/Cognito.js';
+import { signUp, getAuthTokens, groupUser } from '../services/Cognito.js';
 
 export const registerUser = async (req, res) => {
   const { email, username, password } = req.body;

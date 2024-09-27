@@ -1,5 +1,5 @@
 import pkg from '@aws-sdk/client-dynamodb';
-const { DynamoDBClient, QueryCommand, PutCommand } = pkg;
+const { DynamoDBClient } = pkg;
 import DynamoDBLib from '@aws-sdk/lib-dynamodb';
 
 import { getParameter } from '../services/Parameterstore.js';
