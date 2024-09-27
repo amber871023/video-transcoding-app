@@ -14,7 +14,7 @@ const qutUsername = await getParameter('/n11422807/group50/QUT_USERNAME');
 
 // Function to create a user
 export async function createUser({ email, username, passwordHash, userId }) {
-  const command = new PutCommand({
+  const command = new DynamoDBLib.PutCommand({
     TableName: userTableName,
     Item: {
       'qut-username': qutUsername,
