@@ -181,7 +181,7 @@ export const convertVideo = async (req, res) => {
       case 'mov':
         videoCodec = 'libx264';
         audioCodec = 'aac';
-        extraOptions = ['-movflags', 'faststart']; // MOV requires specific flags to work correctly
+        extraOptions = ['-movflags', 'faststart'];
         break;
       case 'flv':
         videoCodec = 'flv1';
@@ -196,7 +196,7 @@ export const convertVideo = async (req, res) => {
       case 'mp4':
         videoCodec = 'libx264';
         audioCodec = 'aac';
-        extraOptions = ['-movflags', 'faststart']; // Simplified options for MP4
+        extraOptions = ['-movflags', 'faststart'];
         break;
       default:
         console.error('Unsupported format:', outputFormat);
@@ -233,7 +233,7 @@ export const convertVideo = async (req, res) => {
         .on('error', (err, stdout, stderr) => {
           console.error('Error during transcoding:', err.message);
           console.error('FFmpeg stdout:', stdout);
-          console.error('FFmpeg stderr:', stderr); // Capture detailed error information
+          console.error('FFmpeg stderr:', stderr);
           reject(new Error('Failed to transcode video.'));
         })
         .save(tempOutputPath); // Save the output to a temporary file
@@ -264,23 +264,37 @@ export const downloadVideo = async (req, res) => {
     if (!video || !video.transcodedVideoPath) {
       return res.status(404).json({ message: 'Video or transcoded file not found.' });
     }
-    // Get the video file from S3
-    const trasncodedKey = `transcoded/${video.videoId}.${video.transcodedFormat}`;
-    const s3Stream = await getObject(trasncodedKey);
 
-    // Set headers for the file download
-    res.setHeader('Content-Disposition', `attachment; filename="${video.title || 'video.mp4'}"`);
-    res.setHeader('Content-Type', 'video/mp4'); // Adjust this based on the video content type
+    const transcodedKey = `transcoded/${video.videoId}.${video.transcodedFormat}`;
+    const s3Stream = await getObject(transcodedKey);
+
+    // Determine the content type based on the video format
+    const format = path.extname(transcodedKey).substring(1).toLowerCase(); // Extract format from file extension
+    const mimeTypes = {
+      mp4: 'video/mp4',
+      mov: 'video/quicktime',
+      avi: 'video/x-msvideo',
+      webm: 'video/webm',
+      flv: 'video/x-flv',
+      mkv: 'video/x-matroska',
+    };
+
+    // Set the Content-Type based on the detected format, defaulting to a generic type if not found
+    const contentType = mimeTypes[format] || 'application/octet-stream';
+
+    // Set headers for file download
+    res.setHeader('Content-Disposition', `attachment; filename="${video.title || `downloaded_video.${format}`}"`);
+    res.setHeader('Content-Type', contentType);
 
     // Pipe the S3 stream directly to the response
     s3Stream.Body.pipe(res).on('error', (err) => {
       console.error('Error streaming file:', err);
-      return res.status(500).json({ message: 'Error during file download.', error: err });
+      return res.status(500).json({ message: 'Error during file download.', error: err.message });
     });
 
   } catch (err) {
-    console.error('Error finding video:', err);
-    return res.status(500).json({ message: 'Error finding video.', error: err });
+    console.error('Error finding video:', err.message);
+    return res.status(500).json({ message: 'Error finding video.', error: err.message });
   }
 };
 
@@ -313,7 +327,6 @@ export const deleteVideo = async (req, res) => {
 export const getUserVideos = async (req, res) => {
   try {
     const userId = req.user.id;
-    console.log(userId)
     if (!userId) {
       return res.status(400).json({ error: true, msg: 'User ID not found in request.' });
     }
