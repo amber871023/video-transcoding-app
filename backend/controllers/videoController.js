@@ -6,6 +6,9 @@ import { PassThrough } from 'stream';
 import { createVideo, getVideoById, getVideosByUserId, updateVideoTranscodedPath, deleteVideoRecord } from '../models/Video.js';
 import { v4 as uuidv4 } from 'uuid';
 import https from 'https';
+import { getParameter } from '../services/Parameterstore.js';
+
+const qutUsername = await getParameter('/n11422807/group50/QUT_USERNAME');
 
 export const uploadVideo = async (req, res) => {
   try {
@@ -69,7 +72,7 @@ export const uploadVideo = async (req, res) => {
     const userId = req.user ? req.user.id : 'anonymous';
     console.log("print", userId)
     const videoData = {
-      'qut-username': process.env.QUT_USERNAME,
+      'qut-username': qutUsername,
       videoId,
       title,
       originalVideoPath: videoURL,

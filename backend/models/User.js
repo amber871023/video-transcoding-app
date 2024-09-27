@@ -1,15 +1,23 @@
-import pkg from '@aws-sdk/client-dynamodb'; // Import the package as a default import
-const { DynamoDBClient, QueryCommand, PutCommand } = pkg; // Destructure the required commands from the package
+import pkg from '@aws-sdk/client-dynamodb';
+const { DynamoDBClient, QueryCommand, PutCommand } = pkg;
+import DynamoDBLib from '@aws-sdk/lib-dynamodb';
 
+import { getParameter } from '../services/Parameterstore.js';
+
+// Initialize DynamoDB client
 const client = new DynamoDBClient({ region: 'ap-southeast-2' });
 const userTableName = "n11422807-users";
+
+// Retrieve environment variables from AWS Parameter Store
+const qutUsername = await getParameter('/n11422807/group50/QUT_USERNAME');
+// const qutUsername = process.env.QUT_USERNAME;
 
 // Function to create a user
 export async function createUser({ email, username, passwordHash, userId }) {
   const command = new PutCommand({
     TableName: userTableName,
     Item: {
-      'qut-username': process.env.QUT_USERNAME,
+      'qut-username': qutUsername,
       userId,
       username,
       passwordHash,
@@ -29,15 +37,15 @@ export async function createUser({ email, username, passwordHash, userId }) {
 
 // Function to get a user by email
 export async function getUserByEmail(email) {
-  const command = new QueryCommand({
+  const command = new DynamoDBLib.QueryCommand({
     TableName: userTableName,
     KeyConditionExpression: '#pk = :username',
     ExpressionAttributeNames: {
-      '#pk': 'qut-username',
+      '#pk': 'qut-username'
     },
     ExpressionAttributeValues: {
-      ':username': process.env.QUT_USERNAME,
-      ':email': email,
+      ':username': qutUsername,
+      ':email': email
     },
     FilterExpression: 'email = :email',
   });

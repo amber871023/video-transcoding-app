@@ -1,15 +1,16 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, PutCommand, GetCommand, QueryCommand, UpdateCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
+import { getParameter } from '../services/Parameterstore.js'; // Ensure .js extension for ES Modules
 
-// Environment variables
-const qutUsername = process.env.QUT_USERNAME;
+// Retrieve environment variables from AWS Parameter Store
+const qutUsername = await getParameter('/n11422807/group50/QUT_USERNAME');
 const videoTableName = "n11422807-videos";
 
-// Initialize DynamoDB client
+// Initialize DynamoDB client and document client
 const client = new DynamoDBClient({ region: 'ap-southeast-2' });
 const docClient = DynamoDBDocumentClient.from(client);
 
-// Create a new video record
+// Function to create a new video record
 export async function createVideo(video) {
   const command = new PutCommand({
     TableName: videoTableName,
@@ -37,7 +38,7 @@ export async function createVideo(video) {
   }
 }
 
-// Get video by its ID
+// Function to get a video by its ID
 export async function getVideoById(videoId) {
   const command = new GetCommand({
     TableName: videoTableName,
@@ -56,7 +57,7 @@ export async function getVideoById(videoId) {
   }
 }
 
-// Get videos by User ID
+// Function to get videos by User ID
 export async function getVideosByUserId(userId) {
   const command = new QueryCommand({
     TableName: videoTableName,
@@ -67,7 +68,7 @@ export async function getVideosByUserId(userId) {
       '#userId': 'userId', // Define filter key
     },
     ExpressionAttributeValues: {
-      ':qutUsername': process.env.QUT_USERNAME,
+      ':qutUsername': qutUsername,
       ':userId': userId,
     },
   });
@@ -81,7 +82,7 @@ export async function getVideosByUserId(userId) {
   }
 }
 
-// Update video with transcoded path and format
+// Function to update video with transcoded path and format
 export async function updateVideoTranscodedPath(videoId, transcodedPath, transcodedFormat) {
   const command = new UpdateCommand({
     TableName: videoTableName,
@@ -106,7 +107,7 @@ export async function updateVideoTranscodedPath(videoId, transcodedPath, transco
   }
 }
 
-// Delete video record from DynamoDB
+// Function to delete a video record from DynamoDB
 export async function deleteVideoRecord(videoId) {
   const command = new DeleteCommand({
     TableName: videoTableName,
