@@ -67,9 +67,8 @@ const UploadSection = () => {
         },
       });
 
-      // Correctly set the videoId property
       updateFileData(index, {
-        videoId: response.data.videoId, // Ensure this matches what is expected later
+        videoId: response.data.videoId,
         thumbnailPath: response.data.thumbnailPath,
         size: response.data.size,
         duration: response.data.duration,
@@ -78,7 +77,7 @@ const UploadSection = () => {
 
       updateFileStatus(index, 'Uploaded');
 
-      await handleConvert({ ...file, videoId: response.data.videoId }, index); // Pass the correct videoId
+      await handleConvert({ ...file, videoId: response.data.videoId }, index);
 
     } catch (error) {
       console.error('Error uploading file:', error);
@@ -129,7 +128,7 @@ const UploadSection = () => {
       updateFileStatus(index, 'Processing');
 
       const formData = new FormData();
-      formData.append('videoId', file.videoId); // Use videoId as expected
+      formData.append('videoId', file.videoId);
       formData.append('format', file.format.toLowerCase());
       // Correct way to log the FormData contents
       const response = await fetch(`${baseUrl}/videos/convert`, {
@@ -366,11 +365,11 @@ const UploadSection = () => {
                     }}
                   >
                     <option value="MP4">MP4</option>
-                    <option value="FLV">FLV</option>
+                    <option value="WEBM">WEBM</option>
                     <option value="MOV">MOV</option>
+                    <option value="FLV">FLV</option>
                     {/* <option value="MKV">MKV</option> */}
                     <option value="AVI">AVI</option>
-                    <option value="WEBM">WEBM</option>
                     {/* <option value="WMV">WMV</option> */}
                     <option value="VOB">VOB</option>
                   </Select>
