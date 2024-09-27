@@ -15,8 +15,8 @@ const app = express();
 // Middlewares
 app.use(morgan('dev'));
 app.use(cors({
-  origin: 'http://localhost:3000', // Replace with your frontend URL
-  // origin: 'http://group50.cab432.com:3001',
+  // origin: 'http://localhost:3000', // Replace with your frontend URL
+  origin: 'http://group50.cab432.com:3001',
   credentials: true,
 }));
 app.use(bodyParser.json());

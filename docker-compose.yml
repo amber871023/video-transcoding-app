@@ -2,14 +2,20 @@ version: "3.8"
 
 services:
   frontend:
-    image: 901444280953.dkr.ecr.ap-southeast-2.amazonaws.com/n11422807-vitranscoding:fronted
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.frontend
+    image: 901444280953.dkr.ecr.ap-southeast-2.amazonaws.com/n11422807-vitranscoding:frontend
     ports:
       - "3000:3000"
     depends_on:
       - backend
 
   backend:
-    image: 901444280953.dkr.ecr.ap-southeast-2.amazonaws.com/n11422807-vitranscoding:bankend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.backend
+    image: 901444280953.dkr.ecr.ap-southeast-2.amazonaws.com/n11422807-vitranscoding:backend
     ports:
       - "3001:3001"
     environment:
