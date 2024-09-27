@@ -32,7 +32,7 @@ export async function tagBucket() {
             }
         });
         const response = await s3Client.send(command);
-        console.log("Bucket tagged:", response);
+        // console.log("Bucket tagged:", response);
     } catch (err) {
         console.log(err);
     }
@@ -53,7 +53,7 @@ export async function putObject(key, body) {
             console.log(`Uploaded ${progress.loaded} of ${progress.total} bytes`);
         });
         await upload.done();
-        console.log('Upload completed successfully');
+        // console.log('Upload completed successfully');
     } catch (err) {
         console.error('Error uploading to S3:', err);
         throw err;
@@ -67,7 +67,7 @@ export async function getURL(key) {
             Bucket: bucketName,
             Key: key
         });
-        const presignedURL = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+        const presignedURL = await getSignedUrl(s3Client, command, { expiresIn: 0 });
         return presignedURL;
     } catch (err) {
         console.error('Error getting object from S3:', err);
@@ -83,7 +83,7 @@ export async function getObject(key) {
             Key: key
         });
         const response = await s3Client.send(command);
-        console.log("Get object successfully!");
+        // console.log("Get object successfully!");
         return response;
     } catch (err) {
         console.error('Error getting object from S3:', err);
@@ -99,7 +99,7 @@ export async function getURLIncline(key) {
             Key: key,
             ResponseContentDisposition: 'inline'
         });
-        const presignedURL = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+        const presignedURL = await getSignedUrl(s3Client, command, { expiresIn: 36000 });
         return presignedURL;
     } catch (err) {
         console.error('Error getting object from S3: ', err);
@@ -115,7 +115,6 @@ export async function deleteObject(key) {
             Key: key
         });
         const response = await s3Client.send(command);
-        console.log(response);
         return response;
     } catch (err) {
         console.log("Error deleting object: ", err);

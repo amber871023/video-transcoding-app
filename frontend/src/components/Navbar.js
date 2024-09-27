@@ -23,7 +23,8 @@ const Navbar = () => {
               <Text fontWeight="bold">Hi, {username}!</Text>
               <Link to="/">Home</Link>
               <Link to="/videos">Videos</Link>
-              <Button variant="link" color="white" onClick={logout}>Log out</Button>
+              <Link to="/" onClick={logout}>Log out</Link>
+
             </>
           ) : (
             <>
@@ -45,7 +46,7 @@ const Navbar = () => {
                 <MenuDivider />
                 <Link to="/videos"><MenuItem color={'black'}>Videos</MenuItem></Link>
                 <MenuDivider />
-                <MenuItem color={'black'} onClick={logout}>Log out</MenuItem>
+                <Link to="/"><MenuItem color={'black'} onClick={logout}>Log out</MenuItem></Link>
               </>
             ) : (
               <>

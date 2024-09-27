@@ -19,7 +19,8 @@ export const uploadVideo = async (req, res) => {
     // Upload video directly to S3 using the buffer from req.file
     const videoBuffer = req.file.buffer;
     const videoId = uuidv4();
-    const format = path.extname(req.file.originalname).substring(1);
+    let format = path.extname(req.file.originalname).substring(1);
+
     const videoKey = `uploads/${videoId}.${format}`;
     await putObject(videoKey, videoBuffer);
 
@@ -70,7 +71,7 @@ export const uploadVideo = async (req, res) => {
     const size = req.file.size;
     const title = req.file.originalname;
     const userId = req.user ? req.user.id : 'anonymous';
-    console.log("print", userId)
+
     const videoData = {
       'qut-username': qutUsername,
       videoId,
@@ -124,6 +125,7 @@ function downloadFileFromS3(url, outputPath) {
     });
   });
 }
+
 export const convertVideo = async (req, res) => {
   try {
     const videoId = req.body.videoId;
@@ -151,6 +153,7 @@ export const convertVideo = async (req, res) => {
     const outputFormat = req.body.format.toLowerCase();
     const outputKey = `transcoded/${videoId}.${outputFormat}`;
     const outputUrl = await getURLIncline(outputKey);
+    const tempOutputPath = `/tmp/${videoId}.${outputFormat}`; // Temporary output file path
 
     // Set headers for SSE
     res.setHeader('Content-Type', 'text/event-stream');
@@ -161,56 +164,92 @@ export const convertVideo = async (req, res) => {
     let lastProgress = 0;
     const MIN_PROGRESS_INCREMENT = 1;
 
-    // Create a PassThrough stream for upload
-    const passThroughStream = new PassThrough();
-    const uploadPromise = putObject(outputKey, passThroughStream);
+    // Define codec settings and extra options based on the output format
+    let videoCodec, audioCodec, extraOptions;
 
-    // Use FFmpeg to process the video
-    ffmpeg(tempVideoPath)
-      .outputFormat(outputFormat)
-      .outputOptions('-movflags frag_keyframe+empty_moov+default_base_moof') // Options for MP4 compatibility
-      .videoCodec('libx264')
-      .audioCodec('aac')
-      .on('start', (commandLine) => {
-      })
-      .on('codecData', (data) => {
-        const durationParts = data.duration.split(':');
-        totalDuration = parseFloat(durationParts[0]) * 3600 + parseFloat(durationParts[1]) * 60 + parseFloat(durationParts[2]);
-      })
-      .on('progress', (progress) => {
-        const timeParts = progress.timemark.split(':');
-        const currentTime = parseFloat(timeParts[0]) * 3600 + parseFloat(timeParts[1]) * 60 + parseFloat(timeParts[2]);
-        let percentComplete = (currentTime / totalDuration) * 100;
+    switch (outputFormat) {
+      case 'mkv':
+        videoCodec = 'libx264';
+        audioCodec = 'aac';
+        extraOptions = ['-preset', 'medium'];
+        break;
+      case 'avi':
+        videoCodec = 'mpeg4';
+        audioCodec = 'mp3';
+        extraOptions = ['-q:v', '3'];
+        break;
+      case 'mov':
+        videoCodec = 'libx264';
+        audioCodec = 'aac';
+        extraOptions = ['-movflags', 'faststart']; // MOV requires specific flags to work correctly
+        break;
+      case 'flv':
+        videoCodec = 'flv1';
+        audioCodec = 'mp3';
+        extraOptions = [];
+        break;
+      case 'webm':
+        videoCodec = 'libvpx';
+        audioCodec = 'libvorbis';
+        extraOptions = ['-deadline', 'realtime', '-cpu-used', '5'];
+        break;
+      case 'mp4':
+        videoCodec = 'libx264';
+        audioCodec = 'aac';
+        extraOptions = ['-movflags', 'faststart']; // Simplified options for MP4
+        break;
+      default:
+        console.error('Unsupported format:', outputFormat);
+        return res.status(400).json({ message: 'Unsupported format requested.' });
+    }
 
-        if (!isNaN(percentComplete) && percentComplete > lastProgress) {
-          if ((percentComplete - lastProgress) >= MIN_PROGRESS_INCREMENT) {
-            res.write(`data: ${Math.round(percentComplete)}\n\n`);
-            lastProgress = percentComplete;
+    // Use FFmpeg to process the video and save it to a temporary file
+    await new Promise((resolve, reject) => {
+      ffmpeg(tempVideoPath)
+        .outputOptions(...extraOptions)
+        .videoCodec(videoCodec)
+        .audioCodec(audioCodec)
+        .format(outputFormat)
+        .on('start', (commandLine) => {
+          console.log('FFmpeg command:', commandLine); // Debugging log to verify the FFmpeg command
+        })
+        .on('codecData', (data) => {
+          const durationParts = data.duration.split(':');
+          totalDuration = parseFloat(durationParts[0]) * 3600 + parseFloat(durationParts[1]) * 60 + parseFloat(durationParts[2]);
+        })
+        .on('progress', (progress) => {
+          const timeParts = progress.timemark.split(':');
+          const currentTime = parseFloat(timeParts[0]) * 3600 + parseFloat(timeParts[1]) * 60 + parseFloat(timeParts[2]);
+          let percentComplete = (currentTime / totalDuration) * 100;
+
+          if (!isNaN(percentComplete) && percentComplete > lastProgress) {
+            if ((percentComplete - lastProgress) >= MIN_PROGRESS_INCREMENT) {
+              res.write(`data: ${Math.round(percentComplete)}\n\n`);
+              lastProgress = percentComplete;
+            }
           }
-        }
-      })
-      .on('end', async () => {
-        await uploadPromise;
-        await updateVideoTranscodedPath(videoId, outputUrl, outputFormat);
-        res.write('data: 100\n\n');
-        res.end();
-        fs.unlinkSync(tempVideoPath);
-      })
-      .on('error', (err) => {
-        console.error('Error during transcoding:', err.message);
-        res.write('data: error\n\n');
-        res.end();
-        if (fs.existsSync(tempVideoPath)) {
-          fs.unlinkSync(tempVideoPath);
-        }
-      })
-      .pipe(passThroughStream); // Use .pipe() to handle streaming to the upload
-
-    req.on('close', () => {
-      if (fs.existsSync(tempVideoPath)) {
-        fs.unlinkSync(tempVideoPath);
-      }
+        })
+        .on('end', resolve)
+        .on('error', (err, stdout, stderr) => {
+          console.error('Error during transcoding:', err.message);
+          console.error('FFmpeg stdout:', stdout);
+          console.error('FFmpeg stderr:', stderr); // Capture detailed error information
+          reject(new Error('Failed to transcode video.'));
+        })
+        .save(tempOutputPath); // Save the output to a temporary file
     });
+
+    // Upload the transcoded file to S3
+    const fileStream = fs.createReadStream(tempOutputPath);
+    await putObject(outputKey, fileStream);
+    await updateVideoTranscodedPath(videoId, outputUrl, outputFormat);
+
+    res.write('data: 100\n\n');
+    res.end();
+
+    // Cleanup temporary files
+    fs.unlinkSync(tempVideoPath);
+    fs.unlinkSync(tempOutputPath);
 
   } catch (err) {
     console.error('Error during transcoding:', err.message);
@@ -255,9 +294,10 @@ export const deleteVideo = async (req, res) => {
     }
     const key = video.s3Key;
     const format = video.format
+    const transcodedFormat = video.transcodedFormat
     // Delete the video from S3
     await deleteObject(`uploads/${key}.${format}`);
-    await deleteObject(`transcoded/${key}`);
+    await deleteObject(`transcoded/${key}.${transcodedFormat}`);
     await deleteObject(`thumbnails/${key}.png`);
 
     // Delete the video record from DynamoDB
