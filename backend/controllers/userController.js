@@ -29,20 +29,14 @@ export const registerUser = async (req, res) => {
     }
     groupUser(username, groupName);
 
-    await confirmUser(username);
-
-    // Get token
-    const tokens = await getAuthTokens(username, password);
-    const idToken = tokens.idToken;
-    const resp = await verifyToken(idToken);
-    const userId = resp.sub;
+    const userId = signUpResponse.UserSub;
 
     const saltRounds = 10;
     const passwordHash = await bcrypt.hash(password, saltRounds);
     // // // Create use in DynamoDB
     const newUser = await createUser({ email, username, passwordHash, userId });
 
-    res.status(201).json({ error: false, msg: "User registered successfully", username: username, idToken });
+    res.status(201).json({ error: false, msg: "User registered successfully", username: username });
   } catch (err) {
     console.error('Error during user registration:', err.message);
     res.status(500).json({ error: true, msg: "Server error", err: err.message });

@@ -40,7 +40,7 @@ const Register = () => {
       setEmail('');
       setUsername('');
       setPassword('');
-      navigate('/');
+      navigate('/login');
     } catch (error) {
       setError('Failed to register.');
       toast({
