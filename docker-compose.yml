@@ -2,14 +2,14 @@ version: "3.8"
 
 services:
   frontend:
-    image: 901444280953.dkr.ecr.ap-southeast-2.amazonaws.com/n11422807a1:frontend
+    image: 901444280953.dkr.ecr.ap-southeast-2.amazonaws.com/n11422807-vitranscoding:fronted
     ports:
       - "3000:3000"
     depends_on:
       - backend
 
   backend:
-    image: 901444280953.dkr.ecr.ap-southeast-2.amazonaws.com/n11422807a1:backend
+    image: 901444280953.dkr.ecr.ap-southeast-2.amazonaws.com/n11422807-vitranscoding:bankend
     ports:
       - "3001:3001"
     environment:
