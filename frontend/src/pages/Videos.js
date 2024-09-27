@@ -149,22 +149,33 @@ const VideoPage = () => {
         throw new Error(`Failed to download the video. Status: ${response.status}`);
       }
 
+      // Extract filename from the Content-Disposition header, if available
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = 'downloaded_video'; // Default filename
+
+      if (contentDisposition) {
+        // Extract filename from the header using regex
+        const match = contentDisposition.match(/filename="(.+)"/);
+        if (match && match[1]) {
+          filename = match[1];
+        }
+      }
+
       // Convert the response to a Blob object
       const blob = await response.blob();
-
       const downloadLink = URL.createObjectURL(blob);
 
+      // Create a temporary link element for download
       const link = document.createElement('a');
       link.href = downloadLink;
-      link.setAttribute('download', 'downloaded_video.mp4');
+      link.setAttribute('download', filename); // Use the extracted or default filename
       document.body.appendChild(link);
       link.click();
 
-
+      // Clean up the temporary link and revoke the object URL
       document.body.removeChild(link);
       URL.revokeObjectURL(downloadLink);
     } catch (error) {
-      console.error('Download failed:', error);
       toast({
         title: 'Download Error',
         description: 'Failed to download the video. Please try again later.',
@@ -174,7 +185,6 @@ const VideoPage = () => {
       });
     }
   };
-
 
   const handlePlayVideo = (videoId) => {
     const video = videos.find(v => v.videoId === videoId);
