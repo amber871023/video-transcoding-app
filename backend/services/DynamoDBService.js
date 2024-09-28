@@ -91,3 +91,28 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     .then(() => console.log('Tables setup completed'))
     .catch(console.error);
 }
+
+// Implement transaction in DynamoDB to ensure data consistency
+export async function updateVideoTranscodedPath(videoId, transcodedPath, transcodedFormat) {
+  const command = new UpdateCommand({
+    TableName: videoTableName,
+    Key: {
+      'qut-username': qutUsername,
+      videoId: videoId,
+    },
+    UpdateExpression: 'SET transcodedVideoPath = :transcodedPath, transcodedFormat = :transcodedFormat',
+    ExpressionAttributeValues: {
+      ':transcodedPath': transcodedPath,
+      ':transcodedFormat': transcodedFormat,
+    },
+    ReturnValues: 'UPDATED_NEW',
+  });
+
+  try {
+    const response = await docClient.send(command);
+    return response.Attributes;
+  } catch (err) {
+    console.error('Error updating transcoded video path and format:', err);
+    throw err;
+  }
+}

@@ -5,8 +5,8 @@ import { FaFileUpload, FaExchangeAlt, FaTrashAlt, FaDownload, FaFileVideo, FaFil
 import CustomButton from './CustomButton';
 import axios from 'axios';
 
-const baseUrl = "http://localhost:3001";
-// const baseUrl = "http://group50.cab432.com:3001";
+// const baseUrl = "http://localhost:3001";
+const baseUrl = "http://group50.cab432.com:3001";
 
 const UploadSection = () => {
   const [videoFiles, setVideoFiles] = useState([]);
@@ -67,6 +67,7 @@ const UploadSection = () => {
         },
       });
 
+      // Update file data with response from the server
       updateFileData(index, {
         videoId: response.data.videoId,
         thumbnailPath: response.data.thumbnailPath,
@@ -76,19 +77,21 @@ const UploadSection = () => {
       });
 
       updateFileStatus(index, 'Uploaded');
-
       await handleConvert({ ...file, videoId: response.data.videoId }, index);
-
     } catch (error) {
       console.error('Error uploading file:', error);
       updateFileStatus(index, 'Failed');
+
+      // Retry logic after a brief delay
+      setTimeout(() => {
+        handleUpload(file, index);
+      }, 3000);
     }
   };
 
   const updateFileUploadProgress = (index, progress) => {
     setVideoFiles(prevFiles => {
       if (!prevFiles[index]) {
-        console.error(`File at index ${index} is undefined`);
         return prevFiles;
       }
       const updatedFiles = [...prevFiles];
@@ -104,7 +107,6 @@ const UploadSection = () => {
     }
     setVideoFiles(prevFiles => {
       if (!prevFiles[index]) {
-        console.error(`File at index ${index} is undefined`);
         return prevFiles;
       }
       const updatedFiles = [...prevFiles];
@@ -130,7 +132,7 @@ const UploadSection = () => {
       const formData = new FormData();
       formData.append('videoId', file.videoId);
       formData.append('format', file.format.toLowerCase());
-      // Correct way to log the FormData contents
+
       const response = await fetch(`${baseUrl}/videos/convert`, {
         method: 'POST',
         body: formData,
@@ -145,16 +147,13 @@ const UploadSection = () => {
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder('utf-8');
-
       let done = false;
 
       while (!done) {
         const { value, done: readerDone } = await reader.read();
         done = readerDone;
         const chunk = decoder.decode(value, { stream: true });
-
         const cleanedChunk = chunk.trim().replace(/^data:\s*/, '');
-
         const progress = Number(cleanedChunk);
 
         if (!isNaN(progress)) {
@@ -170,8 +169,15 @@ const UploadSection = () => {
     } catch (error) {
       console.error('Error during conversion:', error);
       updateFileStatus(index, 'Failed');
+
+      // Handle reconnection logic
+      setTimeout(() => {
+        // Retry the process
+        handleConvert(file, index);
+      }, 3000);
     }
   };
+
 
   const handleDownload = async (file) => {
     try {
@@ -205,7 +211,6 @@ const UploadSection = () => {
   const updateFileStatus = (index, status) => {
     setVideoFiles(prevFiles => {
       if (!prevFiles[index]) {
-        console.error(`File at index ${index} is undefined`);
         return prevFiles;
       }
       const updatedFiles = [...prevFiles];

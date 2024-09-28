@@ -42,12 +42,10 @@ const VideoPage = () => {
           'Authorization': `Bearer ${token}`,
         },
       });
-      const videosWithUrls = response.data.map(video => {
-        return {
-          ...video,
-          videoUrl: video.originalVideoPath,
-        };
-      });
+      const videosWithUrls = response.data.map(video => ({
+        ...video,
+        videoUrl: video.originalVideoPath,
+      }));
       setVideos(videosWithUrls);
     } catch (error) {
       toast({
@@ -59,11 +57,13 @@ const VideoPage = () => {
       });
     }
   };
+
+  // Automatically fetch videos when logged in or on page reload
   useEffect(() => {
     if (isLoggedIn) {
       fetchVideos();
     }
-  }, [toast]);
+  }, [isLoggedIn]);
 
   const handleReformat = async () => {
     if (!videoToReformat) {
@@ -82,12 +82,10 @@ const VideoPage = () => {
         body: JSON.stringify({ format: format.toLowerCase() }),
       });
 
-      // Check if the response is not ok
       if (!response.ok) {
         throw new Error('Failed to initiate reformatting');
       }
 
-      // Start reading the progress updates from the response body
       const reader = response.body.getReader();
       const decoder = new TextDecoder('utf-8');
       let done = false;
@@ -97,18 +95,14 @@ const VideoPage = () => {
         done = readerDone;
         const chunk = decoder.decode(value, { stream: true });
 
-        // Strip the 'data: ' prefix if it exists
         const cleanedChunk = chunk.trim().replace(/^data:\s*/, '');
-
         const progress = Number(cleanedChunk);
 
         if (!isNaN(progress)) {
-          // Update the progress state
           setConversionProgress((prev) => ({ ...prev, [videoToReformat]: progress }));
 
           // Check if the conversion is completed
           if (progress >= 100) {
-            // Update the status and close the modal
             toast({
               title: 'Video reformatted successfully.',
               status: 'success',
@@ -116,9 +110,7 @@ const VideoPage = () => {
               isClosable: true,
             });
             closeReformatDialog();
-
-            // Refresh the video list after successful reformatting
-            await fetchVideos();
+            await fetchVideos(); // Refresh the video list
           }
         }
       }
@@ -130,9 +122,11 @@ const VideoPage = () => {
         duration: 5000,
         isClosable: true,
       });
+
+      // Retry logic after failure
+      setTimeout(handleReformat, 3000);
     }
   };
-
 
   const handleDownload = async (videoId) => {
     try {

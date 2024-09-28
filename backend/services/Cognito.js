@@ -86,7 +86,7 @@ export async function verifyToken(token) {
   const idVerifier = CognitoJwtVerifier.create({
     userPoolId: secrets.Cognito_USERPOOLID,
     tokenUse: "id",
-    clientId: clientId,
+    clientId: secrets.Cognito_CLIENTID,
   });
 
   try {

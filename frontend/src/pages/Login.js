@@ -3,7 +3,7 @@ import {
   Box, Button, Input, FormControl, FormErrorMessage, VStack, Heading, InputGroup, InputLeftElement, InputRightElement, IconButton, useToast,
 } from '@chakra-ui/react';
 import { ViewIcon, ViewOffIcon } from '@chakra-ui/icons';
-import { FaEnvelope, FaLock } from 'react-icons/fa'; // Updated icon for email
+import { FaEnvelope, FaLock } from 'react-icons/fa';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -12,7 +12,7 @@ import { useAuth } from '../context/AuthContext';
 const baseUrl = "http://group50.cab432.com:3001";
 
 const LoginPage = () => {
-  const [email, setEmail] = useState(''); // Changed from username to email
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
@@ -25,7 +25,7 @@ const LoginPage = () => {
     setIsLoading(true);
     setError('');
     try {
-      const response = await axios.post(`${baseUrl}/users/login`, { email, password }); // Changed to send email
+      const response = await axios.post(`${baseUrl}/users/login`, { email, password });
       const { idToken, username } = response.data;
       login({ idToken, username });
       toast({
@@ -77,7 +77,7 @@ const LoginPage = () => {
           <FormControl isInvalid={!!error}>
             <InputGroup>
               <InputLeftElement pointerEvents='none'>
-                <FaEnvelope color='gray.300' /> {/* Email icon */}
+                <FaEnvelope color='gray.300' />
               </InputLeftElement>
               <Input
                 type="email"

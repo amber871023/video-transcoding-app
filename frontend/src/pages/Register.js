@@ -78,7 +78,7 @@ const Register = () => {
           <FormControl isInvalid={!!error}>
             <InputGroup>
               <InputLeftElement pointerEvents="none">
-                <FaEnvelope color="gray.300" /> {/* Email icon */}
+                <FaEnvelope color="gray.300" />
               </InputLeftElement>
               <Input
                 type="email"
@@ -90,7 +90,7 @@ const Register = () => {
             </InputGroup>
             <InputGroup mt={4}>
               <InputLeftElement pointerEvents="none">
-                <FaUser color="gray.300" /> {/* User icon */}
+                <FaUser color="gray.300" />
               </InputLeftElement>
               <Input
                 type="text"
@@ -102,7 +102,7 @@ const Register = () => {
             </InputGroup>
             <InputGroup mt={4}>
               <InputLeftElement pointerEvents="none">
-                <FaLock color="gray.300" /> {/* Lock icon */}
+                <FaLock color="gray.300" />
               </InputLeftElement>
               <Input
                 type={showPassword ? 'text' : 'password'}
