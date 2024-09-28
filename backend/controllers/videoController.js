@@ -168,14 +168,14 @@ export const convertVideo = async (req, res) => {
     let videoCodec, audioCodec, extraOptions;
 
     switch (outputFormat) {
-      case 'mkv':
-        videoCodec = 'libx264';
-        audioCodec = 'aac';
-        extraOptions = ['-preset', 'medium'];
+      case 'mpeg':
+        videoCodec = 'mpeg2video';
+        audioCodec = 'mp2';
+        extraOptions = ['-q:v', '3'];
         break;
       case 'avi':
         videoCodec = 'mpeg4';
-        audioCodec = 'mp3';
+        audioCodec = 'ac3';
         extraOptions = ['-q:v', '3'];
         break;
       case 'mov':
@@ -184,9 +184,9 @@ export const convertVideo = async (req, res) => {
         extraOptions = ['-movflags', 'faststart'];
         break;
       case 'flv':
-        videoCodec = 'flv1';
-        audioCodec = 'mp3';
-        extraOptions = [];
+        videoCodec = 'libx264';
+        audioCodec = 'aac';
+        extraOptions = ['-preset', 'veryfast', '-tune', 'zerolatency'];
         break;
       case 'webm':
         videoCodec = 'libvpx';
@@ -276,7 +276,7 @@ export const downloadVideo = async (req, res) => {
       avi: 'video/x-msvideo',
       webm: 'video/webm',
       flv: 'video/x-flv',
-      mkv: 'video/x-matroska',
+      mpeg: 'video/mpeg',
     };
 
     // Set the Content-Type based on the detected format, defaulting to a generic type if not found
@@ -341,21 +341,34 @@ export const getUserVideos = async (req, res) => {
 // Reformat Video
 export const reformatVideo = async (req, res) => {
   try {
-    const video = await getVideoById(req.params.id);
+    const videoId = req.params.id;
+    if (!videoId) {
+      return res.status(400).json({ message: 'No video ID provided.' });
+    }
+
+    const video = await getVideoById(videoId);
     if (!video) {
-      return res.status(404).json({ message: 'Video not found' });
+      return res.status(404).json({ message: 'Video not found.' });
     }
 
-    const inputPath = video.originalVideoPath;
-    if (!inputPath) {
-      return res.status(400).json({ message: 'Original transcoded path is missing.' });
+    const videoURL = video.originalVideoPath;
+    const originalExtension = path.extname(new URL(videoURL).pathname);
+    const tempVideoPath = `/tmp/${videoId}${originalExtension}`;
+
+    // Download the video to a temporary path
+    await downloadFileFromS3(videoURL, tempVideoPath);
+
+    if (!fs.existsSync(tempVideoPath)) {
+      throw new Error(`File not downloaded correctly to ${tempVideoPath}`);
     }
 
+    // Set up the output format and path
     const outputFormat = req.body.format.toLowerCase();
-    const outputKey = `transcoded/${video.videoId}.${outputFormat}`;
+    const outputKey = `transcoded/${videoId}.${outputFormat}`;
     const outputUrl = await getURLIncline(outputKey);
+    const tempOutputPath = `/tmp/${videoId}.${outputFormat}`; // Temporary output file path
 
-    // Set response headers for server-sent events
+    // Set headers for SSE
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
@@ -364,53 +377,97 @@ export const reformatVideo = async (req, res) => {
     let lastProgress = 0;
     const MIN_PROGRESS_INCREMENT = 1;
 
-    const passThroughStream = new PassThrough();
-    const uploadPromise = putObject(outputKey, passThroughStream);
+    // Define codec settings and extra options based on the output format
+    let videoCodec, audioCodec, extraOptions;
 
-    // Use FFmpeg to reformat the video
-    ffmpeg(inputPath)
-      .outputFormat(outputFormat)
-      .outputOptions('-movflags frag_keyframe+empty_moov+default_base_moof') // For MP4 compatibility
-      .videoCodec('libx264')
-      .audioCodec('aac')
-      .on('start', (commandLine) => {
-      })
-      .on('codecData', (data) => {
-        // Calculate total duration of the video from codec data
-        const durationParts = data.duration.split(':');
-        totalDuration = parseFloat(durationParts[0]) * 3600 + parseFloat(durationParts[1]) * 60 + parseFloat(durationParts[2]);
-      })
-      .on('progress', (progress) => {
-        // Calculate the current progress percentage
-        const timeParts = progress.timemark.split(':');
-        const currentTime = parseFloat(timeParts[0]) * 3600 + parseFloat(timeParts[1]) * 60 + parseFloat(timeParts[2]);
-        let percentComplete = (currentTime / totalDuration) * 100;
+    switch (outputFormat) {
+      case 'mpeg':
+        videoCodec = 'mpeg2video';
+        audioCodec = 'mp2';
+        extraOptions = ['-q:v', '3'];
+        break;
+      case 'avi':
+        videoCodec = 'mpeg4';
+        audioCodec = 'ac3';
+        extraOptions = ['-q:v', '3'];
+        break;
+      case 'mov':
+        videoCodec = 'libx264';
+        audioCodec = 'aac';
+        extraOptions = ['-movflags', 'faststart'];
+        break;
+      case 'flv':
+        videoCodec = 'libx264';
+        audioCodec = 'aac';
+        extraOptions = ['-preset', 'veryfast', '-tune', 'zerolatency'];
+        break;
+      case 'webm':
+        videoCodec = 'libvpx';
+        audioCodec = 'libvorbis';
+        extraOptions = ['-deadline', 'realtime', '-cpu-used', '5'];
+        break;
+      case 'mp4':
+        videoCodec = 'libx264';
+        audioCodec = 'aac';
+        extraOptions = ['-movflags', 'faststart'];
+        break;
+      default:
+        console.error('Unsupported format:', outputFormat);
+        return res.status(400).json({ message: 'Unsupported format requested.' });
+    }
 
-        // Send progress updates to the client
-        if (!isNaN(percentComplete) && percentComplete > lastProgress) {
-          if ((percentComplete - lastProgress) >= MIN_PROGRESS_INCREMENT) {
-            res.write(`data: ${Math.round(percentComplete)}\n\n`);
-            lastProgress = percentComplete;
+    // Use FFmpeg to process the video and save it to a temporary file
+    await new Promise((resolve, reject) => {
+      ffmpeg(tempVideoPath)
+        .outputOptions(...extraOptions)
+        .videoCodec(videoCodec)
+        .audioCodec(audioCodec)
+        .format(outputFormat)
+        .on('start', (commandLine) => {
+          console.log('FFmpeg command:', commandLine); // Debugging log to verify the FFmpeg command
+        })
+        .on('codecData', (data) => {
+          const durationParts = data.duration.split(':');
+          totalDuration = parseFloat(durationParts[0]) * 3600 + parseFloat(durationParts[1]) * 60 + parseFloat(durationParts[2]);
+        })
+        .on('progress', (progress) => {
+          const timeParts = progress.timemark.split(':');
+          const currentTime = parseFloat(timeParts[0]) * 3600 + parseFloat(timeParts[1]) * 60 + parseFloat(timeParts[2]);
+          let percentComplete = (currentTime / totalDuration) * 100;
+
+          if (!isNaN(percentComplete) && percentComplete > lastProgress) {
+            if ((percentComplete - lastProgress) >= MIN_PROGRESS_INCREMENT) {
+              res.write(`data: ${Math.round(percentComplete)}\n\n`);
+              lastProgress = percentComplete;
+            }
           }
-        }
-      })
-      .on('end', async () => {
-        // Complete the upload process and update the database
-        await uploadPromise;
-        await updateVideoTranscodedPath(video.videoId, outputUrl, outputFormat);
-        res.write('data: 100\n\n');
-        res.end();
-      })
-      .on('error', (err) => {
-        console.error('Error during reformatting:', err.message);
-        res.write('data: error\n\n');
-        res.end();
-      })
-      .pipe(passThroughStream); // Stream the FFmpeg output to the PassThrough stream
+        })
+        .on('end', resolve)
+        .on('error', (err, stdout, stderr) => {
+          console.error('Error during reformatting:', err.message);
+          console.error('FFmpeg stdout:', stdout);
+          console.error('FFmpeg stderr:', stderr);
+          reject(new Error('Failed to reformat video.'));
+        })
+        .save(tempOutputPath); // Save the output to a temporary file
+    });
+
+    // Upload the reformatted file to S3
+    const fileStream = fs.createReadStream(tempOutputPath);
+    await putObject(outputKey, fileStream);
+    await updateVideoTranscodedPath(videoId, outputUrl, outputFormat);
+
+    res.write('data: 100\n\n');
+    res.end();
+
+    // Cleanup temporary files
+    fs.unlinkSync(tempVideoPath);
+    fs.unlinkSync(tempOutputPath);
 
   } catch (err) {
-    console.error('Error in reformatVideo controller:', err.message);
-    res.status(500).json({ message: 'Internal server error', error: err.message });
+    console.error('Error during reformatting:', err.message);
+    return res.status(500).json({ message: 'Error during reformatting.', error: err.message });
   }
 };
+
 

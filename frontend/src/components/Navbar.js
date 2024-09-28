@@ -22,7 +22,7 @@ const Navbar = () => {
             <>
               <Text fontWeight="bold">Hi, {username}!</Text>
               <Link to="/">Home</Link>
-              <Link to="/videos">Videos</Link>
+              <Link to="/videos">History</Link>
               <Link to="/" onClick={logout}>Log out</Link>
 
             </>
@@ -44,7 +44,7 @@ const Navbar = () => {
               <>
                 <Link to="/"><MenuItem color={'black'}>Home</MenuItem></Link>
                 <MenuDivider />
-                <Link to="/videos"><MenuItem color={'black'}>Videos</MenuItem></Link>
+                <Link to="/videos"><MenuItem color={'black'}>History</MenuItem></Link>
                 <MenuDivider />
                 <Link to="/"><MenuItem color={'black'} onClick={logout}>Log out</MenuItem></Link>
               </>

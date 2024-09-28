@@ -393,13 +393,12 @@ const VideoPage = () => {
             <Text>Select the format you want to convert the video to:</Text>
             <Select mt={4} value={format} onChange={(e) => setFormat(e.target.value)}>
               <option value="MP4">MP4</option>
+              <option value="WEBM">WEBM</option>
               <option value="FLV">FLV</option>
               <option value="MOV">MOV</option>
-              {/* <option value="MKV">MKV</option> */}
               <option value="AVI">AVI</option>
-              <option value="WEBM">WEBM</option>
               {/* <option value="WMV">WMV</option> */}
-              <option value="VOB">VOB</option>
+              <option value="MPEG">MPEG</option>
             </Select>
           </ModalBody>
           <ModalFooter>

@@ -19,7 +19,7 @@ const upload = multer({
   limits: { fileSize: 200 * 1024 * 1024 }, // 200MB file size limit
   fileFilter: (req, file, cb) => {
     // Define the allowed file extensions
-    const allowedExtensions = /mp4|mkv|avi|mov|wmv|flv|webm/;
+    const allowedExtensions = /mp4|mpeg|avi|mov|wmv|flv|webm|mpeg/;
     const allowedMIMETypes = [
       'video/mp4',
       'video/x-matroska', // mkv
@@ -28,7 +28,8 @@ const upload = multer({
       'video/quicktime', // mov
       'video/x-ms-wmv', // wmv
       'video/x-flv', // flv
-      'video/webm', // webm
+      'video/webm',// webm
+      'video/mpeg', //mpeg
       'application/octet-stream' // Fallback for cases like this
     ];
 
@@ -40,7 +41,7 @@ const upload = multer({
     if (extname && mimetype) {
       cb(null, true); // Accept the file
     } else {
-      cb(new Error('Invalid file type. Only MP4, MKV, AVI, MOV, and WMV files are allowed.'));
+      cb(new Error('Invalid file type. Only MP4, MKV, AVI, MOV, MPEG, and WMV files are allowed.'));
     }
   }
 });

@@ -13,7 +13,7 @@ const UploadSection = () => {
   const [conversionStarted, setConversionStarted] = useState(false);
   const [errorMessages, setErrorMessages] = useState([]);
 
-  const allowedFormats = ['MP4', 'MKV', 'WMV', 'AVI', 'MOV', 'VOB']; // Define allowed formats
+  const allowedFormats = ['MP4', 'MPEG', 'WMV', 'AVI', 'MOV', 'WEBM']; // Define allowed formats
 
   useEffect(() => {
     if (videoFiles.length === 0) {
@@ -368,10 +368,9 @@ const UploadSection = () => {
                     <option value="WEBM">WEBM</option>
                     <option value="MOV">MOV</option>
                     <option value="FLV">FLV</option>
-                    {/* <option value="MKV">MKV</option> */}
                     <option value="AVI">AVI</option>
                     {/* <option value="WMV">WMV</option> */}
-                    <option value="VOB">VOB</option>
+                    <option value="MPEG">MPEG</option>
                   </Select>
                   <IconButton
                     aria-label="Remove File"
