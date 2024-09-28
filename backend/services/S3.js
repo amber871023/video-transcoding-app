@@ -1,10 +1,11 @@
 import { S3Client, CreateBucketCommand, PutBucketTaggingCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { Upload } from '@aws-sdk/lib-storage';
+import { getParameter } from '../services/Parameterstore.js';
 
 // S3 configuration
 const bucketName = 'group50';
-const qutUsername = 'n11404680@qut.edu.au';
+const qutUsername = await getParameter('/n11422807/group50/QUT_USERNAME');
 const purpose = 'assessment-2';
 const s3Client = new S3Client({ region: 'ap-southeast-2' });
 

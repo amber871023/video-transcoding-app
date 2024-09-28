@@ -1,16 +1,16 @@
 import { CognitoIdentityProviderClient, SignUpCommand, AdminAddUserToGroupCommand, AdminConfirmSignUpCommand, InitiateAuthCommand } from '@aws-sdk/client-cognito-identity-provider';
 import { CognitoJwtVerifier } from 'aws-jwt-verify';
+import { getSecretValue } from '../services/Secretsmanager.js';
 
 const client = new CognitoIdentityProviderClient({ region: 'ap-southeast-2' });
 
-const clientId = '6qsb305b0v74lhuttbodun3men';
-const userPoolId = 'ap-southeast-2_ikcu5JEvN';
+const secrets = await getSecretValue("n11422807-Cognito-Credentials");
 
 export async function signUp(username, password, email) {
   console.log("Signing up user");
   try {
     const command = new SignUpCommand({
-      ClientId: clientId,
+      ClientId: secrets.Cognito_CLIENTID,
       Username: username,
       Password: password,
       UserAttributes: [{ Name: "email", Value: email }],
@@ -32,7 +32,7 @@ export async function groupUser(username, group) {
     const command = new AdminAddUserToGroupCommand({
       GroupName: group,
       Username: username,
-      UserPoolId: userPoolId,
+      UserPoolId: secrets.Cognito_USERPOOLID,
     });
     const response = await client.send(command);
     console.log('User added to the group:', response);
@@ -45,7 +45,7 @@ export async function groupUser(username, group) {
 export async function confirmUser(username) {
   try {
     const command = new AdminConfirmSignUpCommand({
-      UserPoolId: userPoolId,
+      UserPoolId: secrets.Cognito_USERPOOLID,
       Username: username,
     });
     const response = await client.send(command);
@@ -64,7 +64,7 @@ export async function getAuthTokens(username, password) {
         USERNAME: username,
         PASSWORD: password,
       },
-      ClientId: clientId,
+      ClientId: secrets.Cognito_CLIENTID,
     });
 
     const response = await client.send(command);
@@ -84,7 +84,7 @@ export async function getAuthTokens(username, password) {
 // Function to verify the JWT token
 export async function verifyToken(token) {
   const idVerifier = CognitoJwtVerifier.create({
-    userPoolId: userPoolId,
+    userPoolId: secrets.Cognito_USERPOOLID,
     tokenUse: "id",
     clientId: clientId,
   });
