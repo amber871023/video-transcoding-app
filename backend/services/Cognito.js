@@ -1,4 +1,5 @@
-import { CognitoIdentityProviderClient, SignUpCommand, AdminAddUserToGroupCommand, AdminConfirmSignUpCommand, InitiateAuthCommand } from '@aws-sdk/client-cognito-identity-provider';
+import { CognitoIdentityProviderClient, SignUpCommand, AdminAddUserToGroupCommand, AdminConfirmSignUpCommand, InitiateAuthCommand, 
+        GetUserCommand, AdminDeleteUserCommand, AdminGetUserCommand } from '@aws-sdk/client-cognito-identity-provider';
 import { CognitoJwtVerifier } from 'aws-jwt-verify';
 
 const client = new CognitoIdentityProviderClient({ region: 'ap-southeast-2' });
@@ -19,7 +20,7 @@ export async function signUp(username, password, email) {
     return response;
   } catch (err) {
     if (err.name === 'UsernameExistsException') {
-      return { error: "User already exists" };
+      return { error: "User already exists in Cognito" };
     } else {
       return { error: "Sign-up failed. Please try again later." };
     }
@@ -41,19 +42,95 @@ export async function groupUser(username, group) {
   }
 }
 
-// Function to confirm user automatically
-export async function confirmUser(username) {
-  try {
-    const command = new AdminConfirmSignUpCommand({
-      UserPoolId: userPoolId,
-      Username: username,
+// Get user data 
+export async function getUserData(accessToken){
+    const command = new GetUserCommand({
+        AccessToken: accessToken,
     });
-    const response = await client.send(command);
-    console.log('User confirmed:', response);
-  } catch (err) {
-    console.error('Error confirming user:', err);
-  }
+    try{
+        const response = await client.send(command);
+        console.log("Authenticated user details: ", response);
+        return response;
+    }catch(err){
+        console.error("Error getting user data from Cognito: ", err);
+        throw err;
+    }
+
 }
+
+// Get user Id baed on username
+export async function getUserId(username){
+    const command = new AdminGetUserCommand({
+        UserPoolId: userPoolId,
+        Username: username, 
+    });
+    try{
+        const response = await client.send(command);
+        // Extract User Sub from UserAttributes
+        const userSubAttribute = response.UserAttributes.find(attr => attr.Name === 'sub');
+        console.log("TEST",userSubAttribute.Value)
+        if (userSubAttribute) {
+            return userSubAttribute.Value; // Return the User Sub
+        } else {
+            console.error('User Sub not found for:', username);
+            return null;} // Return null if User Sub not found
+    }catch(err){
+        if (err.name === 'UserNotFoundException') {
+            console.error('User not found:', username);
+            return null; // Return null if the user does not exist
+        }
+        console.error('Error fetching user ID:', err);
+    }
+}
+
+export async function deleteCognitoUser(name){
+    const command = new AdminDeleteUserCommand({
+        UserPoolId: userPoolId,
+        Username: name,
+    })
+    try{
+        const response = await client.send(command)
+        console.log("Cognito user deleted successfully: ", response);
+        return response;
+    }catch(err){
+        console.error("Error deleting user: ", err);
+    }
+}
+
+// Get user lists
+export async function checkUserExist(username){
+    const command = new AdminGetUserCommand({
+        UserPoolId: userPoolId,
+        Username: username,
+    });
+    try{
+        await client.send(command);
+        return true;
+    }catch(err){
+        if(err.name === 'UserNotFoundException'){
+            // Return false when user is not found
+            return false;
+        }else{
+            console.error('Error checking user existence:', error);
+            throw err;
+        }
+    }
+}
+
+
+// Function to confirm user automatically (Currently unavailable)
+// export async function confirmUser(username) {
+//   try {
+//     const command = new AdminConfirmSignUpCommand({
+//       UserPoolId: userPoolId,
+//       Username: username,
+//     });
+//     const response = await client.send(command);
+//     console.log('User confirmed:', response);
+//   } catch (err) {
+//     console.error('Error confirming user:', err);
+//   }
+// }
 
 // Function to authenticate user and generate tokens
 export async function getAuthTokens(username, password) {

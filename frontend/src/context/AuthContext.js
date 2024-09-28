@@ -25,6 +25,7 @@ export const AuthProvider = ({ children }) => {
   const login = (userData) => {
     setIsLoggedIn(true);
     setUsername(userData.username);
+    console.log(userData);
     localStorage.setItem('idToken', userData.idToken);
     localStorage.setItem('username', userData.username);
   };
@@ -37,6 +38,9 @@ export const AuthProvider = ({ children }) => {
     navigate('/');
   };
 
+  // const role =() =>{
+  //   localStorage.setItem()
+  // }
   return (
     <AuthContext.Provider value={{ isLoggedIn, username, login, logout }}>
       {children}

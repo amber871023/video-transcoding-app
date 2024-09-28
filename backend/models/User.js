@@ -6,10 +6,10 @@ import { getParameter } from '../services/Parameterstore.js';
 
 // Initialize DynamoDB client
 const client = new DynamoDBClient({ region: 'ap-southeast-2' });
-const userTableName = "n11422807-users";
+const userTableName = "n11404680-users";
 
 // Retrieve environment variables from AWS Parameter Store
-const qutUsername = await getParameter('/n11422807/group50/QUT_USERNAME');
+const qutUsername = await getParameter('/n11404680/group50/QUT_USERNAME');
 // const qutUsername = process.env.QUT_USERNAME;
 
 // Function to create a user
@@ -55,6 +55,25 @@ export async function getUserByEmail(email) {
     return response.Items[0];
   } catch (err) {
     console.error('Error retrieving user:', err);
+    throw err;
+  }
+}
+
+export async function deleteUser(userId) {
+  const command = new DynamoDBLib.DeleteCommand({
+    TableName: userTableName,
+    Key: {
+      'qut-username': qutUsername,
+      userId: userId,
+    },
+  });
+
+  try {
+    const response = await client.send(command);
+    console.log('DynamoDB user deleted successfully:', response);
+    return response;
+  } catch (err) {
+    console.error('Error deleting user:', err);
     throw err;
   }
 }

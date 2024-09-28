@@ -8,7 +8,7 @@ import { v4 as uuidv4 } from 'uuid';
 import https from 'https';
 import { getParameter } from '../services/Parameterstore.js';
 
-const qutUsername = await getParameter('/n11422807/group50/QUT_USERNAME');
+const qutUsername = await getParameter('/n11404680/group50/QUT_USERNAME');
 
 export const uploadVideo = async (req, res) => {
   try {

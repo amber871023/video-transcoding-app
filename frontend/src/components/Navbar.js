@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import {
   Box, HStack, Button, Image, IconButton, Menu, MenuButton, MenuList, MenuItem, MenuDivider, Text,
 } from '@chakra-ui/react';
@@ -8,7 +8,7 @@ import { useAuth } from '../context/AuthContext'; // Import the AuthContext
 import logo from '../assets/logo.png';
 
 const Navbar = () => {
-  const { isLoggedIn, logout, username } = useAuth(); // Assuming `user` contains the username
+  const { isLoggedIn, logout, username, role } = useAuth(); // Assuming role contains the user role (admin or general)
   const navigate = useNavigate();
 
   return (
@@ -21,10 +21,18 @@ const Navbar = () => {
           {isLoggedIn ? (
             <>
               <Text fontWeight="bold">Hi, {username}!</Text>
-              <Link to="/">Home</Link>
-              <Link to="/videos">History</Link>
-              <Link to="/" onClick={logout}>Log out</Link>
-
+              {role === 'admin' ? (
+                <>
+                  <Link to="/users">Users</Link>
+                  <Link to="/" onClick={logout}>Log out</Link>
+                </>
+              ) : (
+                <>
+                  <Link to="/">Home</Link>
+                  <Link to="/videos">History</Link>
+                  <Link to="/" onClick={logout}>Log out</Link>
+                </>
+              )}
             </>
           ) : (
             <>
@@ -42,11 +50,21 @@ const Navbar = () => {
           <MenuList>
             {isLoggedIn ? (
               <>
-                <Link to="/"><MenuItem color={'black'}>Home</MenuItem></Link>
-                <MenuDivider />
-                <Link to="/videos"><MenuItem color={'black'}>History</MenuItem></Link>
-                <MenuDivider />
-                <Link to="/"><MenuItem color={'black'} onClick={logout}>Log out</MenuItem></Link>
+                {role === 'admin' ? (
+                  <>
+                    <Link to="/users"><MenuItem color={'black'}>Users</MenuItem></Link>
+                    <MenuDivider />
+                    <Link to="/"><MenuItem color={'black'} onClick={logout}>Log out</MenuItem></Link>
+                  </>
+                ) : (
+                  <>
+                    <Link to="/"><MenuItem color={'black'}>Home</MenuItem></Link>
+                    <MenuDivider />
+                    <Link to="/videos"><MenuItem color={'black'}>History</MenuItem></Link>
+                    <MenuDivider />
+                    <Link to="/"><MenuItem color={'black'} onClick={logout}>Log out</MenuItem></Link>
+                  </>
+                )}
               </>
             ) : (
               <>

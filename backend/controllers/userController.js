@@ -1,6 +1,8 @@
 import bcrypt from 'bcrypt';
-import { createUser, getUserByEmail } from '../models/User.js';
-import { signUp, getAuthTokens, groupUser } from '../services/Cognito.js';
+import { createUser, getUserByEmail, deleteUser } from '../models/User.js';
+import { signUp, getAuthTokens, groupUser, deleteCognitoUser, checkUserExist, getUserId } from '../services/Cognito.js';
+import jwt from 'jsonwebtoken';
+
 
 export const registerUser = async (req, res) => {
   const { email, username, password } = req.body;
@@ -12,7 +14,7 @@ export const registerUser = async (req, res) => {
   try {
     const existingUser = await getUserByEmail(email);
     if (existingUser) {
-      return res.status(400).json({ error: true, msg: "User already exists" });
+      return res.status(400).json({ error: true, msg: "User already exists in DynamoDB" });
     }
 
     // Create user in Cognito
@@ -65,24 +67,44 @@ export const loginUser = async (req, res) => {
     const username = user.username
     // Get token
     const response = await getAuthTokens(username, password);
-    const idToken = response.idToken;
+    const idToken = await response.idToken;
+    const accessToken = await response.accessToken;
 
-    // Decode the token
-    const decodeToken = (token) => {
-      const base64Url = token.split('.')[1];
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/'); // Replace URL-safe characters
-      const decodedPayload = Buffer.from(base64, 'base64').toString('utf-8'); // Decode base64 to a string
-      const payload = JSON.parse(decodedPayload);
-      return payload;
-    }
-    const decodedToken = decodeToken(idToken)
+
+    const decodedToken = jwt.decode(idToken);
+    
+    // Extract the user's group(s)
+    const userGroup = decodedToken['cognito:groups'][0];
 
     // Extract expiration time from decodedToken
     const expirationTime = decodedToken.exp;
 
-    res.json({ token_type: "Bearer", idToken, expires_in: expirationTime, username: username });
+    // Get user group from Cognito
+    // const userData = await getUserGroup(username);
+
+    res.json({ token_type: "Bearer", idToken, expires_in: expirationTime, username, userGroup });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: true, msg: "Server error", err: err.message });
   }
 };
+export const deleteUsers = async (req, res) =>{
+  const username  = req.params.username;
+  const userId = await getUserId(username);
+  console.log("HERE",userId);
+  try{
+    const result = await checkUserExist(username);
+    console.log(result);
+    if(result == true){
+      // Delete user from Cognito
+      const response = await deleteCognitoUser(username);
+      // Delete user from DynamoDB
+      const response2 = await deleteUser(userId);
+      res.json({ message: `${username} has been delete successfully!` });
+    }else{
+      res.status(404).json({ error: true, message: 'User not found' });    }
+  }catch(err){
+    res.status(500).json({ error: true, message: "Error deleting user: ", err: err.message });
+  }
 
+};
