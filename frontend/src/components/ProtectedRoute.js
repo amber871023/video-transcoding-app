@@ -9,7 +9,7 @@ const ProtectedRoute = ({  children }) => {
    // If no user is logged in, redirect to login page
    if (!username) {
     console.log("Stored username: ", username); // Debugging log
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/users" replace />;
   }
 
   // If user is not an admin, redirect to home page

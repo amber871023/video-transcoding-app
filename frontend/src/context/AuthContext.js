@@ -18,7 +18,7 @@ export const AuthProvider = ({ children }) => {
     const storedUsername = localStorage.getItem('username');
     const storedUserGroup = localStorage.getItem('userGroup');
 
-    if (storedToken && storedUsername && userGroup) {
+    if (storedToken && storedUsername && storedUserGroup) {
       setIsLoggedIn(true);
       setUsername(storedUsername);
       setUserGroup(storedUserGroup);
@@ -32,13 +32,13 @@ export const AuthProvider = ({ children }) => {
     console.log(userData);
     localStorage.setItem('idToken', userData.idToken);
     localStorage.setItem('username', userData.username);
-    localStorage.setItem('usergroup', userData.userGroup);
+    localStorage.setItem('userGroup', userData.userGroup);
   };
 
   const logout = () => {
     localStorage.removeItem('idToken');
     localStorage.removeItem('username');
-    localStorage.removeItem('usergroup');
+    localStorage.removeItem('userGroup');
     setIsLoggedIn(false);
     setUsername('');
     navigate('/');

@@ -38,7 +38,7 @@ app.get('/', (req, res) => {
 // Start server
 (async () => {
   try {
-    const PORT = await getParameter('/n11422807/group50/PORT') || 3001;
+    const PORT = await getParameter('/n11404680/group50/PORT') || 3001;
     app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
     app.timeout = 1200000; // Increase server timeout to 20 minutes
   } catch (err) {

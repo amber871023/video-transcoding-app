@@ -197,7 +197,7 @@ const UploadSection = () => {
       console.error('Error during conversion:', error);
       updateFileStatus(index, 'Failed');
 
-      if (error.message.includes('Network Error') || error.message.includes('ERR_CONNECTION_REFUSED')) {
+      if (error.message.includes('Network Error') || error.message.includes('ERR_CONNECTION_REFUSEDN')) {
         toast({
           title: 'Connection Error',
           description: 'Failed to convert the video. Connection is down.',
