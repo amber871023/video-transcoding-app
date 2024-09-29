@@ -90,6 +90,7 @@ export async function deleteCognitoUser(name){
         Username: name,
     })
     try{
+        console.log("HERE4", name)
         const response = await client.send(command)
         console.log("Cognito user deleted successfully: ", response);
         return response;
@@ -105,6 +106,7 @@ export async function checkUserExist(username){
         Username: username,
     });
     try{
+        console.log("HERE3", name);
         await client.send(command);
         return true;
     }catch(err){

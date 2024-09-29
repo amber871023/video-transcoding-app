@@ -90,19 +90,19 @@ export const loginUser = async (req, res) => {
 };
 export const deleteUsers = async (req, res) =>{
   const username  = req.params.username;
-  const userId = await getUserId(username);
-  console.log("HERE",userId);
+ // const userId = await getUserId(username);
   try{
-    const result = await checkUserExist(username);
-    console.log(result);
-    if(result == true){
+    //console.log("here1", username);
+    //const result = await checkUserExist(username);
+    //console.log("HERE2", result);
+   // if(result == true){
       // Delete user from Cognito
       const response = await deleteCognitoUser(username);
       // Delete user from DynamoDB
-      const response2 = await deleteUser(userId);
+      //const response2 = await deleteUser(userId);
       res.json({ message: `${username} has been delete successfully!` });
-    }else{
-      res.status(404).json({ error: true, message: 'User not found' });    }
+    //}else{
+      //res.status(404).json({ error: true, message: 'User not found' });    }
   }catch(err){
     res.status(500).json({ error: true, message: "Error deleting user: ", err: err.message });
   }
@@ -124,14 +124,14 @@ export const getUserList = async(req, res) =>{
 export const disableUsers = async(req, res) =>{
   const username  = req.params.username;
   try{
-    const result = await checkUserExist(username);
-    console.log(result);
-    if(result == true){
+    // const result = await checkUserExist(username);
+    // console.log(result);
+    // if(result == true){
       // Disable user from Cognito
       const response = await disableUser(username);
       res.json({ message: `${username} has been diabled successfully!` });
-    }else{
-      res.status(404).json({ error: true, message: 'User not found' });    }
+    // }else{
+    //   res.status(404).json({ error: true, message: 'User not found' });    }
   }catch(err){
     res.status(500).json({ error: true, message: "Error disabling user: ", err: err.message });
   }
