@@ -15,8 +15,8 @@ const app = express();
 // Middlewares
 app.use(morgan('dev'));
 app.use(cors({
-  // origin: 'http://localhost:3000', // Replace with your frontend URL
-  origin: 'http://group50.cab432.com:3000',
+  origin: 'http://localhost:3000', // Replace with your frontend URL
+  // origin: 'http://group50.cab432.com:3000',
   credentials: true,
 }));
 app.use(bodyParser.json());
@@ -45,6 +45,11 @@ app.get('/', (req, res) => {
     console.error('Failed to start server:', err);
   }
 })();
+// Add a /status route to check if the server is running
+app.get('/status', (req, res) => {
+  res.status(200).json({ message: 'Server is running' });
+});
+
 
 // Catch 404 and forward to error handler
 app.use((req, res, next) => {

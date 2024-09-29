@@ -1,17 +1,18 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Box, VStack, Text, Select, Stack, HStack, Image, Progress, IconButton, Tag, TagLabel, CircularProgress, CircularProgressLabel, Alert, AlertIcon, Button } from '@chakra-ui/react';
+import { Box, VStack, Text, Select, Stack, HStack, Image, Progress, IconButton, Tag, TagLabel, CircularProgress, CircularProgressLabel, Alert, AlertIcon, Button, useToast } from '@chakra-ui/react';
 import { FaFileUpload, FaExchangeAlt, FaTrashAlt, FaDownload, FaFileVideo, FaFileMedical } from 'react-icons/fa';
 import CustomButton from './CustomButton';
 import axios from 'axios';
 
-// const baseUrl = "http://localhost:3001";
-const baseUrl = "http://group50.cab432.com:3001";
+const baseUrl = "http://localhost:3001";
+// const baseUrl = "http://group50.cab432.com:3001";
 
 const UploadSection = () => {
   const [videoFiles, setVideoFiles] = useState([]);
   const [conversionStarted, setConversionStarted] = useState(false);
   const [errorMessages, setErrorMessages] = useState([]);
+  const toast = useToast(); // Initialize Chakra's toast hook
 
   const allowedFormats = ['MP4', 'MPEG', 'WMV', 'AVI', 'MOV', 'WEBM']; // Define allowed formats
 
@@ -81,12 +82,39 @@ const UploadSection = () => {
     } catch (error) {
       updateFileStatus(index, 'Failed');
 
-      // Retry logic after a brief delay
-      setTimeout(() => {
-        handleUpload(file, index);
-      }, 3000);
+      if (error.message.includes('Network Error') || error.message.includes('ERR_CONNECTION_REFUSED')) {
+        toast({
+          title: 'Connection Error',
+          description: 'Failed to upload the video. Connection is down.',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+
+        // Retry logic after detecting backend is available again
+        const retryInterval = setInterval(async () => {
+          try {
+            // Check if the backend is available by making a test request
+            await axios.get(`${baseUrl}/status`, { timeout: 5000 });
+
+            // If backend is back, retry the upload
+            clearInterval(retryInterval); // Stop retry attempts
+            toast({
+              title: 'Backend Available',
+              description: 'Backend is available. Retrying upload...',
+              status: 'success',
+              duration: 5000,
+              isClosable: true,
+            });
+            await handleUpload(file, index);
+          } catch (retryError) {
+            console.log('Still no connection, retrying...');
+          }
+        }, 5000);
+      }
     }
   };
+
 
   const updateFileUploadProgress = (index, progress) => {
     setVideoFiles(prevFiles => {
@@ -169,11 +197,36 @@ const UploadSection = () => {
       console.error('Error during conversion:', error);
       updateFileStatus(index, 'Failed');
 
-      // Handle reconnection logic
-      setTimeout(() => {
-        // Retry the process
-        handleConvert(file, index);
-      }, 3000);
+      if (error.message.includes('Network Error') || error.message.includes('ERR_CONNECTION_REFUSED')) {
+        toast({
+          title: 'Connection Error',
+          description: 'Failed to convert the video. Connection is down.',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+
+        // Retry logic after detecting backend is available again
+        const retryInterval = setInterval(async () => {
+          try {
+            // Check if the backend is available by making a test request
+            await axios.get(`${baseUrl}/status`, { timeout: 5000 });
+
+            // If backend is back, retry the convert
+            clearInterval(retryInterval);
+            toast({
+              title: 'Backend Available',
+              description: 'Backend is available. Retrying conversion...',
+              status: 'success',
+              duration: 5000,
+              isClosable: true,
+            });
+            await handleConvert(file, index);
+          } catch (retryError) {
+            console.log('Still no connection, retrying...');
+          }
+        }, 5000);
+      }
     }
   };
 
