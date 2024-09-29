@@ -197,38 +197,15 @@ const UploadSection = () => {
       console.error('Error during conversion:', error);
       updateFileStatus(index, 'Failed');
 
-      if (error.message.includes('Network Error') || error.message.includes('ERR_CONNECTION_REFUSED')) {
-        toast({
-          title: 'Connection Error',
-          description: 'Failed to convert the video. Connection is down.',
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-        });
-
-        // Retry logic after detecting backend is available again
-        const retryInterval = setInterval(async () => {
-          try {
-            // Check if the backend is available by making a test request
-            await axios.get(`${baseUrl}/status`, { timeout: 5000 });
-
-            // If backend is back, retry the convert
-            clearInterval(retryInterval);
-            toast({
-              title: 'Backend Available',
-              description: 'Backend is available. Retrying conversion...',
-              status: 'success',
-              duration: 5000,
-              isClosable: true,
-            });
-            await handleConvert(file, index);
-          } catch (retryError) {
-            console.log('Still no connection, retrying...');
-          }
-        }, 5000);
-      }
+      // Handle reconnection logic
+      setTimeout(() => {
+        // Retry the process
+        handleConvert(file, index);
+      }, 3000);
     }
   };
+
+
 
 
   const handleDownload = async (file) => {
