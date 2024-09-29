@@ -1,6 +1,6 @@
 import bcrypt from 'bcrypt';
-import { createUser, getUserByEmail, deleteUser } from '../models/User.js';
-import { signUp, getAuthTokens, groupUser, deleteCognitoUser, checkUserExist, getUserId } from '../services/Cognito.js';
+import { createUser, getUserByEmail, deleteUser} from '../models/User.js';
+import { signUp, getAuthTokens, groupUser, deleteCognitoUser, checkUserExist, getUserId, getAllUsers, disableUser  } from '../services/Cognito.js';
 import jwt from 'jsonwebtoken';
 
 
@@ -108,3 +108,31 @@ export const deleteUsers = async (req, res) =>{
   }
 
 };
+
+export const getUserList = async(req, res) =>{
+  try {
+    // Cognito function to get all users' usernames
+    const users = await getAllUsers(); 
+    // Send all users as a response
+    res.status(200).json(users); 
+  } catch (error) {
+    console.error('Error retrieving user list:', error); // Log the error
+    res.status(500).json({ message: 'Failed to retrieve users' }); // Send an error response
+  }
+};
+
+export const disableUsers = async(req, res) =>{
+  const username  = req.params.username;
+  try{
+    const result = await checkUserExist(username);
+    console.log(result);
+    if(result == true){
+      // Disable user from Cognito
+      const response = await disableUser(username);
+      res.json({ message: `${username} has been diabled successfully!` });
+    }else{
+      res.status(404).json({ error: true, message: 'User not found' });    }
+  }catch(err){
+    res.status(500).json({ error: true, message: "Error disabling user: ", err: err.message });
+  }
+}

@@ -7,6 +7,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Videos from './pages/Videos';
 import Admin from './pages/Admin';
+import ProtectedRoute from './components/ProtectedRoute'; // Import the protected route
 
 const App = () => {
   return (
@@ -14,11 +15,20 @@ const App = () => {
       <Navbar />
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/admin" element={<Admin />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/videos" element={<Videos />} />
-      </Routes>
+        {/* <Route path="/users" element={<Admin />} /> */}
+        {/* Protect the admin route */}
+        <Route
+          path="/users"
+          element={
+            <ProtectedRoute>
+              <Admin />
+            </ProtectedRoute>
+          }
+        />
+      </Routes> 
       <Footer />
     </>
   );

@@ -1,5 +1,5 @@
 import { CognitoIdentityProviderClient, SignUpCommand, AdminAddUserToGroupCommand, AdminConfirmSignUpCommand, InitiateAuthCommand, 
-        GetUserCommand, AdminDeleteUserCommand, AdminGetUserCommand } from '@aws-sdk/client-cognito-identity-provider';
+        GetUserCommand, AdminDeleteUserCommand, AdminGetUserCommand, ListUsersCommand, AdminDisableUserCommand   } from '@aws-sdk/client-cognito-identity-provider';
 import { CognitoJwtVerifier } from 'aws-jwt-verify';
 
 const client = new CognitoIdentityProviderClient({ region: 'ap-southeast-2' });
@@ -43,7 +43,7 @@ export async function groupUser(username, group) {
 }
 
 // Get user data 
-export async function getUserData(accessToken){
+export async function getUserData( ){
     const command = new GetUserCommand({
         AccessToken: accessToken,
     });
@@ -83,6 +83,7 @@ export async function getUserId(username){
     }
 }
 
+// Delete specific user 
 export async function deleteCognitoUser(name){
     const command = new AdminDeleteUserCommand({
         UserPoolId: userPoolId,
@@ -118,7 +119,7 @@ export async function checkUserExist(username){
 }
 
 
-// Function to confirm user automatically (Currently unavailable)
+// Confirm user automatically (Currently unavailable)
 // export async function confirmUser(username) {
 //   try {
 //     const command = new AdminConfirmSignUpCommand({
@@ -133,6 +134,8 @@ export async function checkUserExist(username){
 // }
 
 // Function to authenticate user and generate tokens
+
+// Get token after authentication
 export async function getAuthTokens(username, password) {
   try {
     const command = new InitiateAuthCommand({
@@ -179,4 +182,34 @@ export async function verifyToken(token) {
     console.error('Error verifying token:', err);
     throw err;
   }
+}
+
+// Get all the users on Cognito
+export async function getAllUsers(){
+  const command = new ListUsersCommand({
+    UserPoolId: userPoolId
+  }) 
+  try {
+    const response = await client.send(command);
+    const usernames = response.Users.map(user => user.Username);
+    return usernames;
+  }catch (error) {
+    console.error('Error listing users:', error);
+  }
+
+}
+
+// Disable specific user
+export async function disableUser(username){
+    const command = new AdminDisableUserCommand({
+        UserPoolId: userPoolId, 
+        Username: username,
+    })
+    try{
+        const response = await client.send(command);
+        console.log("Cognito user disabled successfully: ", response);
+        return response;
+    }catch (error) {
+        console.error('Error disabling users:', error);
+    }
 }

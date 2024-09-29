@@ -8,7 +8,7 @@ import { useAuth } from '../context/AuthContext'; // Import the AuthContext
 import logo from '../assets/logo.png';
 
 const Navbar = () => {
-  const { isLoggedIn, logout, username, role } = useAuth(); // Assuming role contains the user role (admin or general)
+  const { isLoggedIn, logout, username, userGroup } = useAuth(); // Assuming role contains the user role (admin or general)
   const navigate = useNavigate();
 
   return (
@@ -21,7 +21,7 @@ const Navbar = () => {
           {isLoggedIn ? (
             <>
               <Text fontWeight="bold">Hi, {username}!</Text>
-              {role === 'admin' ? (
+              {userGroup === 'admin' ? (
                 <>
                   <Link to="/users">Users</Link>
                   <Link to="/" onClick={logout}>Log out</Link>
@@ -50,7 +50,7 @@ const Navbar = () => {
           <MenuList>
             {isLoggedIn ? (
               <>
-                {role === 'admin' ? (
+                {userGroup === 'admin' ? (
                   <>
                     <Link to="/users"><MenuItem color={'black'}>Users</MenuItem></Link>
                     <MenuDivider />

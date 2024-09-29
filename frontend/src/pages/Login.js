@@ -26,8 +26,8 @@ const LoginPage = () => {
     setError('');
     try {
       const response = await axios.post(`${baseUrl}/users/login`, { email, password }); // Changed to send email
-      const { idToken, username } = response.data;
-      login({ idToken, username });
+      const { idToken, username, userGroup } = response.data;
+      login({ idToken, username, userGroup });
       toast({
         title: 'Login successful.',
         status: 'success',
@@ -36,8 +36,12 @@ const LoginPage = () => {
       });
       setEmail('');
       setPassword('');
-      navigate('/');
-    } catch (error) {
+      if (userGroup === 'admin') {
+        navigate('/users'); // Redirect to admin page
+      } else {
+        navigate('/'); // Redirect to home page for regular users
+      }
+    }catch{
       setError('Invalid email or password.');
       toast({
         title: 'Login failed.',
