@@ -59,6 +59,7 @@ export async function getUserByEmail(email) {
   }
 }
 
+
 export async function deleteUser(userId) {
   const command = new DynamoDBLib.DeleteCommand({
     TableName: userTableName,

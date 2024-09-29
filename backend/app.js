@@ -45,6 +45,11 @@ app.get('/', (req, res) => {
     console.error('Failed to start server:', err);
   }
 })();
+// Add a /status route to check if the server is running
+app.get('/status', (req, res) => {
+  res.status(200).json({ message: 'Server is running' });
+});
+
 
 // Catch 404 and forward to error handler
 app.use((req, res, next) => {

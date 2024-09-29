@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Box, VStack, Text, Select, Stack, HStack, Image, Progress, IconButton, Tag, TagLabel, CircularProgress, CircularProgressLabel, Alert, AlertIcon, Button } from '@chakra-ui/react';
+import { Box, VStack, Text, Select, Stack, HStack, Image, Progress, IconButton, Tag, TagLabel, CircularProgress, CircularProgressLabel, Alert, AlertIcon, Button, useToast } from '@chakra-ui/react';
 import { FaFileUpload, FaExchangeAlt, FaTrashAlt, FaDownload, FaFileVideo, FaFileMedical } from 'react-icons/fa';
 import CustomButton from './CustomButton';
 import axios from 'axios';
@@ -12,6 +12,7 @@ const UploadSection = () => {
   const [videoFiles, setVideoFiles] = useState([]);
   const [conversionStarted, setConversionStarted] = useState(false);
   const [errorMessages, setErrorMessages] = useState([]);
+  const toast = useToast(); // Initialize Chakra's toast hook
 
   const allowedFormats = ['MP4', 'MPEG', 'WMV', 'AVI', 'MOV', 'WEBM']; // Define allowed formats
 
@@ -67,6 +68,7 @@ const UploadSection = () => {
         },
       });
 
+      // Update file data with response from the server
       updateFileData(index, {
         videoId: response.data.videoId,
         thumbnailPath: response.data.thumbnailPath,
@@ -76,19 +78,47 @@ const UploadSection = () => {
       });
 
       updateFileStatus(index, 'Uploaded');
-
       await handleConvert({ ...file, videoId: response.data.videoId }, index);
-
     } catch (error) {
-      console.error('Error uploading file:', error);
       updateFileStatus(index, 'Failed');
+
+      if (error.message.includes('Network Error') || error.message.includes('ERR_CONNECTION_REFUSED')) {
+        toast({
+          title: 'Connection Error',
+          description: 'Failed to upload the video. Connection is down.',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+
+        // Retry logic after detecting backend is available again
+        const retryInterval = setInterval(async () => {
+          try {
+            // Check if the backend is available by making a test request
+            await axios.get(`${baseUrl}/status`, { timeout: 5000 });
+
+            // If backend is back, retry the upload
+            clearInterval(retryInterval); // Stop retry attempts
+            toast({
+              title: 'Backend Available',
+              description: 'Backend is available. Retrying upload...',
+              status: 'success',
+              duration: 5000,
+              isClosable: true,
+            });
+            await handleUpload(file, index);
+          } catch (retryError) {
+            console.log('Still no connection, retrying...');
+          }
+        }, 5000);
+      }
     }
   };
+
 
   const updateFileUploadProgress = (index, progress) => {
     setVideoFiles(prevFiles => {
       if (!prevFiles[index]) {
-        console.error(`File at index ${index} is undefined`);
         return prevFiles;
       }
       const updatedFiles = [...prevFiles];
@@ -104,7 +134,6 @@ const UploadSection = () => {
     }
     setVideoFiles(prevFiles => {
       if (!prevFiles[index]) {
-        console.error(`File at index ${index} is undefined`);
         return prevFiles;
       }
       const updatedFiles = [...prevFiles];
@@ -130,7 +159,7 @@ const UploadSection = () => {
       const formData = new FormData();
       formData.append('videoId', file.videoId);
       formData.append('format', file.format.toLowerCase());
-      // Correct way to log the FormData contents
+
       const response = await fetch(`${baseUrl}/videos/convert`, {
         method: 'POST',
         body: formData,
@@ -145,16 +174,13 @@ const UploadSection = () => {
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder('utf-8');
-
       let done = false;
 
       while (!done) {
         const { value, done: readerDone } = await reader.read();
         done = readerDone;
         const chunk = decoder.decode(value, { stream: true });
-
         const cleanedChunk = chunk.trim().replace(/^data:\s*/, '');
-
         const progress = Number(cleanedChunk);
 
         if (!isNaN(progress)) {
@@ -170,8 +196,40 @@ const UploadSection = () => {
     } catch (error) {
       console.error('Error during conversion:', error);
       updateFileStatus(index, 'Failed');
+
+      if (error.message.includes('Network Error') || error.message.includes('ERR_CONNECTION_REFUSED')) {
+        toast({
+          title: 'Connection Error',
+          description: 'Failed to convert the video. Connection is down.',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+
+        // Retry logic after detecting backend is available again
+        const retryInterval = setInterval(async () => {
+          try {
+            // Check if the backend is available by making a test request
+            await axios.get(`${baseUrl}/status`, { timeout: 5000 });
+
+            // If backend is back, retry the convert
+            clearInterval(retryInterval);
+            toast({
+              title: 'Backend Available',
+              description: 'Backend is available. Retrying conversion...',
+              status: 'success',
+              duration: 5000,
+              isClosable: true,
+            });
+            await handleConvert(file, index);
+          } catch (retryError) {
+            console.log('Still no connection, retrying...');
+          }
+        }, 5000);
+      }
     }
   };
+
 
   const handleDownload = async (file) => {
     try {
@@ -205,7 +263,6 @@ const UploadSection = () => {
   const updateFileStatus = (index, status) => {
     setVideoFiles(prevFiles => {
       if (!prevFiles[index]) {
-        console.error(`File at index ${index} is undefined`);
         return prevFiles;
       }
       const updatedFiles = [...prevFiles];
@@ -246,7 +303,7 @@ const UploadSection = () => {
       case 'Uploading':
         return (
           <HStack spacing={2}>
-            <Text color="orange.500">Uploading</Text>
+            <Text color="orange.500">Uploading..</Text>
             <Progress hasStripe value={file.uploadProgress} colorScheme="orange" size="sm" width="100px" />
           </HStack>
         );
