@@ -17,8 +17,8 @@ const formatDuration = (durationInSeconds) => {
   return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 };
 
-// const baseUrl = "http://localhost:3001";
-const baseUrl = "http://group50.cab432.com:3001";
+const baseUrl = "http://localhost:3001";
+// const baseUrl = "http://group50.cab432.com:3001";
 
 const VideoPage = () => {
   const [videos, setVideos] = useState([]);
@@ -115,13 +115,13 @@ const VideoPage = () => {
         }
       }
     } catch (error) {
-      toast({
-        title: 'Error reformatting video.',
-        description: 'Please try again.',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
+      // toast({
+      //   title: 'Error reformatting video.',
+      //   description: 'Please try again.',
+      //   status: 'error',
+      //   duration: 5000,
+      //   isClosable: true,
+      // });
 
       // Retry logic after failure
       setTimeout(handleReformat, 3000);

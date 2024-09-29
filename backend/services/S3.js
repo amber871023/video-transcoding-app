@@ -100,7 +100,7 @@ export async function getURLIncline(key) {
             Key: key,
             ResponseContentDisposition: 'inline'
         });
-        const presignedURL = await getSignedUrl(s3Client, command, { expiresIn: 36000 });
+        const presignedURL = await getSignedUrl(s3Client, command, { expiresIn: 604800 });
         return presignedURL;
     } catch (err) {
         console.error('Error getting object from S3: ', err);

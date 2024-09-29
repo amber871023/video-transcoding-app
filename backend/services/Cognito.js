@@ -99,7 +99,6 @@ export async function verifyToken(token) {
     console.log(IdTokenVerifyResult);
     return IdTokenVerifyResult;
   } catch (err) {
-    console.error('Error verifying token:', err);
     throw err;
   }
 }

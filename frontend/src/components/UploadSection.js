@@ -5,8 +5,8 @@ import { FaFileUpload, FaExchangeAlt, FaTrashAlt, FaDownload, FaFileVideo, FaFil
 import CustomButton from './CustomButton';
 import axios from 'axios';
 
-// const baseUrl = "http://localhost:3001";
-const baseUrl = "http://group50.cab432.com:3001";
+const baseUrl = "http://localhost:3001";
+// const baseUrl = "http://group50.cab432.com:3001";
 
 const UploadSection = () => {
   const [videoFiles, setVideoFiles] = useState([]);
@@ -79,7 +79,6 @@ const UploadSection = () => {
       updateFileStatus(index, 'Uploaded');
       await handleConvert({ ...file, videoId: response.data.videoId }, index);
     } catch (error) {
-      console.error('Error uploading file:', error);
       updateFileStatus(index, 'Failed');
 
       // Retry logic after a brief delay
@@ -251,7 +250,7 @@ const UploadSection = () => {
       case 'Uploading':
         return (
           <HStack spacing={2}>
-            <Text color="orange.500">Uploading</Text>
+            <Text color="orange.500">Uploading..</Text>
             <Progress hasStripe value={file.uploadProgress} colorScheme="orange" size="sm" width="100px" />
           </HStack>
         );

@@ -2,16 +2,14 @@ import path from 'path';
 import fs from 'fs';
 import ffmpeg from 'fluent-ffmpeg';
 import { putObject, getObject, getURLIncline, deleteObject } from '../services/S3.js';
-import { PassThrough } from 'stream';
 import { createVideo, getVideoById, getVideosByUserId, updateVideoTranscodedPath, deleteVideoRecord } from '../models/Video.js';
 import { v4 as uuidv4 } from 'uuid';
 import https from 'https';
-import { getParameter } from '../services/Parameterstore.js';
-
-const qutUsername = await getParameter('/n11422807/group50/QUT_USERNAME');
 
 export const uploadVideo = async (req, res) => {
   const tempFiles = []; // Track temporary files for cleanup
+  let videoKey = '';
+  let thumbnailKey = '';
   try {
     if (!req.file || !req.file.buffer) {
       return res.status(400).json({ message: 'No file uploaded.' });
@@ -20,10 +18,16 @@ export const uploadVideo = async (req, res) => {
     const videoBuffer = req.file.buffer;
     const videoId = uuidv4();
     let format = path.extname(req.file.originalname).substring(1);
-    const videoKey = `uploads/${videoId}.${format}`;
+    videoKey = `uploads/${videoId}.${format}`;
 
-    // Upload video directly to S3
-    await putObject(videoKey, videoBuffer);
+    // Attempt to upload video directly to S3
+    try {
+      await putObject(videoKey, videoBuffer);
+    } catch (uploadError) {
+      console.error('Error uploading video to S3:', uploadError.message);
+      return res.status(500).json({ message: 'Failed to upload video to S3.', error: uploadError.message });
+    }
+
     const videoURL = await getURLIncline(videoKey);
 
     // Generate a thumbnail
@@ -45,12 +49,21 @@ export const uploadVideo = async (req, res) => {
         });
     });
 
-    // Upload the thumbnail to S3
-    const thumbnailBuffer = fs.readFileSync(thumbnailPath);
-    const thumbnailKey = `thumbnails/${videoId}.png`;
-    await putObject(thumbnailKey, thumbnailBuffer);
+    // Attempt to upload the thumbnail to S3
+    try {
+      const thumbnailBuffer = fs.readFileSync(thumbnailPath);
+      thumbnailKey = `thumbnails/${videoId}.png`;
+      await putObject(thumbnailKey, thumbnailBuffer);
+    } catch (uploadError) {
+      console.error('Error uploading thumbnail to S3:', uploadError.message);
+      // Rollback: delete the uploaded video if thumbnail upload fails
+      await deleteObject(videoKey);
+      return res.status(500).json({ message: 'Failed to upload thumbnail to S3.', error: uploadError.message });
+    }
+
     const thumbnailURL = await getURLIncline(thumbnailKey);
 
+    // Retrieve video metadata
     const vidData = await getObject(videoKey);
     const metadata = await new Promise((resolve, reject) => {
       ffmpeg(vidData.Body).ffprobe((err, metadata) => {
@@ -58,7 +71,8 @@ export const uploadVideo = async (req, res) => {
         resolve(metadata);
       });
     });
-    // Save video metadata to DynamoDB
+
+    // Prepare video data for DynamoDB
     const videoData = {
       videoId,
       title: req.file.originalname,
@@ -72,17 +86,32 @@ export const uploadVideo = async (req, res) => {
       transcodedVideoPath: null,
     };
 
-    await createVideo(videoData);
+    // Attempt to save video metadata to DynamoDB
+    try {
+      await createVideo(videoData);
+    } catch (dbError) {
+      console.error('Error saving video metadata to DynamoDB:', dbError.message);
+      // Rollback: delete the uploaded video and thumbnail if DynamoDB save fails
+      await deleteObject(videoKey);
+      await deleteObject(thumbnailKey);
+      return res.status(500).json({ message: 'Failed to save video metadata.', error: dbError.message });
+    }
 
     // Cleanup temporary files
     fs.unlinkSync(thumbnailPath);
 
     res.status(201).json(videoData);
   } catch (err) {
+    // General error handling
     console.error('Error processing video upload:', err.message);
+
+    // Rollback: delete uploaded video and thumbnail on general failure
+    if (videoKey) await deleteObject(videoKey);
+    if (thumbnailKey) await deleteObject(thumbnailKey);
+
     res.status(500).json({ message: 'Error processing video upload.', error: err.message });
   } finally {
-    // Cleanup any temporary files left in case of an error
+    // Cleanup any remaining temporary files
     tempFiles.forEach((filePath) => {
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
@@ -198,9 +227,9 @@ export const convertVideo = async (req, res) => {
         .videoCodec(videoCodec)
         .audioCodec(audioCodec)
         .format(outputFormat)
-        .on('start', (commandLine) => {
-          console.log('FFmpeg command:', commandLine);
-        })
+        // .on('start', (commandLine) => {
+        //   console.log('FFmpeg command:', commandLine);
+        // })
         .on('codecData', (data) => {
           const durationParts = data.duration.split(':');
           totalDuration = parseFloat(durationParts[0]) * 3600 + parseFloat(durationParts[1]) * 60 + parseFloat(durationParts[2]);
@@ -219,7 +248,7 @@ export const convertVideo = async (req, res) => {
         })
         .on('end', resolve)
         .on('error', (err, stdout, stderr) => {
-          console.error('Error during transcoding:', err.message);
+          // console.error('Error during transcoding:', err.message);
           reject(err);
         })
         .save(tempOutputPath);
@@ -294,13 +323,13 @@ export const deleteVideo = async (req, res) => {
     if (!video) {
       return res.status(404).json({ message: 'Video not found' });
     }
-    const key = video.s3Key;
+
     const format = video.format
     const transcodedFormat = video.transcodedFormat
     // Delete the video from S3
-    await deleteObject(`uploads/${key}.${format}`);
-    await deleteObject(`transcoded/${key}.${transcodedFormat}`);
-    await deleteObject(`thumbnails/${key}.png`);
+    await deleteObject(`uploads/${video.videoId}.${format}`);
+    await deleteObject(`transcoded/${video.videoId}.${transcodedFormat}`);
+    await deleteObject(`thumbnails/${video.videoId}.png`);
 
     // Delete the video record from DynamoDB
     await deleteVideoRecord(videoId);
@@ -408,9 +437,9 @@ export const reformatVideo = async (req, res) => {
         .videoCodec(videoCodec)
         .audioCodec(audioCodec)
         .format(outputFormat)
-        .on('start', (commandLine) => {
-          console.log('FFmpeg command:', commandLine);
-        })
+        // .on('start', (commandLine) => {
+        //   console.log('FFmpeg command:', commandLine);
+        // })
         .on('codecData', (data) => {
           const durationParts = data.duration.split(':');
           totalDuration = parseFloat(durationParts[0]) * 3600 + parseFloat(durationParts[1]) * 60 + parseFloat(durationParts[2]);
