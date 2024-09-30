@@ -1,19 +1,20 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Box, VStack, Text, Select, Stack, HStack, Image, Progress, IconButton, Tag, TagLabel, CircularProgress, CircularProgressLabel, Alert, AlertIcon, Button } from '@chakra-ui/react';
+import { Box, VStack, Text, Select, Stack, HStack, Image, Progress, IconButton, Tag, TagLabel, CircularProgress, CircularProgressLabel, Alert, AlertIcon, Button, useToast } from '@chakra-ui/react';
 import { FaFileUpload, FaExchangeAlt, FaTrashAlt, FaDownload, FaFileVideo, FaFileMedical } from 'react-icons/fa';
 import CustomButton from './CustomButton';
 import axios from 'axios';
 
-// const baseUrl = "http://localhost:3001";
-const baseUrl = "http://3.25.117.203:3001";
+const baseUrl = "http://localhost:3001";
+// const baseUrl = "http://group50-test.cab432.com:3001";
 
 const UploadSection = () => {
   const [videoFiles, setVideoFiles] = useState([]);
   const [conversionStarted, setConversionStarted] = useState(false);
   const [errorMessages, setErrorMessages] = useState([]);
+  const toast = useToast(); // Initialize Chakra's toast hook
 
-  const allowedFormats = ['MP4', 'MKV', 'WMV', 'AVI', 'MOV', 'VOB']; // Define allowed formats
+  const allowedFormats = ['MP4', 'MPEG', 'WMV', 'AVI', 'MOV', 'WEBM']; // Define allowed formats
 
   useEffect(() => {
     if (videoFiles.length === 0) {
@@ -59,7 +60,7 @@ const UploadSection = () => {
 
       const response = await axios.post(`${baseUrl}/videos/upload`, formData, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('idToken')}`,
         },
         onUploadProgress: (progressEvent) => {
           const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
@@ -67,8 +68,9 @@ const UploadSection = () => {
         },
       });
 
+      // Update file data with response from the server
       updateFileData(index, {
-        id: response.data._id,
+        videoId: response.data.videoId,
         thumbnailPath: response.data.thumbnailPath,
         size: response.data.size,
         duration: response.data.duration,
@@ -76,19 +78,47 @@ const UploadSection = () => {
       });
 
       updateFileStatus(index, 'Uploaded');
-
-      await handleConvert({ ...file, id: response.data._id }, index);
-
+      await handleConvert({ ...file, videoId: response.data.videoId }, index);
     } catch (error) {
-      console.error('Error uploading file:', error);
       updateFileStatus(index, 'Failed');
+
+      if (error.message.includes('Network Error') || error.message.includes('ERR_CONNECTION_REFUSED')) {
+        toast({
+          title: 'Connection Error',
+          description: 'Failed to upload the video. Connection is down.',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+
+        // Retry logic after detecting backend is available again
+        const retryInterval = setInterval(async () => {
+          try {
+            // Check if the backend is available by making a test request
+            await axios.get(`${baseUrl}/status`, { timeout: 5000 });
+
+            // If backend is back, retry the upload
+            clearInterval(retryInterval); // Stop retry attempts
+            toast({
+              title: 'Backend Available',
+              description: 'Backend is available. Retrying upload...',
+              status: 'success',
+              duration: 5000,
+              isClosable: true,
+            });
+            await handleUpload(file, index);
+          } catch (retryError) {
+            console.log('Still no connection, retrying...');
+          }
+        }, 5000);
+      }
     }
   };
+
 
   const updateFileUploadProgress = (index, progress) => {
     setVideoFiles(prevFiles => {
       if (!prevFiles[index]) {
-        console.error(`File at index ${index} is undefined`);
         return prevFiles;
       }
       const updatedFiles = [...prevFiles];
@@ -104,7 +134,6 @@ const UploadSection = () => {
     }
     setVideoFiles(prevFiles => {
       if (!prevFiles[index]) {
-        console.error(`File at index ${index} is undefined`);
         return prevFiles;
       }
       const updatedFiles = [...prevFiles];
@@ -114,7 +143,7 @@ const UploadSection = () => {
   };
 
   const handleConvert = async (file, index) => {
-    if (!file.id) {
+    if (!file.videoId) {
       console.error('Cannot convert without a video ID.');
       return;
     }
@@ -128,15 +157,15 @@ const UploadSection = () => {
       updateFileStatus(index, 'Processing');
 
       const formData = new FormData();
-      formData.append('videoId', file.id);
+      formData.append('videoId', file.videoId);
       formData.append('format', file.format.toLowerCase());
 
       const response = await fetch(`${baseUrl}/videos/convert`, {
         method: 'POST',
         body: formData,
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        }
+          'Authorization': `Bearer ${localStorage.getItem('idToken')}`,
+        },
       });
 
       if (!response.ok) {
@@ -145,17 +174,13 @@ const UploadSection = () => {
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder('utf-8');
-
       let done = false;
 
       while (!done) {
         const { value, done: readerDone } = await reader.read();
         done = readerDone;
         const chunk = decoder.decode(value, { stream: true });
-
-        // Strip the 'data: ' prefix if it exists
         const cleanedChunk = chunk.trim().replace(/^data:\s*/, '');
-
         const progress = Number(cleanedChunk);
 
         if (!isNaN(progress)) {
@@ -171,24 +196,50 @@ const UploadSection = () => {
     } catch (error) {
       console.error('Error during conversion:', error);
       updateFileStatus(index, 'Failed');
+
+      // Handle reconnection logic
+      setTimeout(() => {
+        // Retry the process
+        handleConvert(file, index);
+      }, 3000);
     }
   };
 
-  const handleDownload = (file) => {
-    const downloadUrl = `${baseUrl}/videos/download/${file.id}`;
 
-    const link = document.createElement('a');
-    link.href = downloadUrl;
-    link.setAttribute('download', '');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+
+
+  const handleDownload = async (file) => {
+    try {
+      const response = await fetch(`${baseUrl}/videos/download/${file.videoId}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('idToken')}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to download file.');
+      }
+
+      const blob = await response.blob();
+      const downloadUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.setAttribute('download', file.title || 'downloaded_video');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(downloadUrl); // Clean up the URL object
+
+    } catch (error) {
+      console.error('Download failed:', error);
+      alert('Failed to download the file.');
+    }
   };
 
   const updateFileStatus = (index, status) => {
     setVideoFiles(prevFiles => {
       if (!prevFiles[index]) {
-        console.error(`File at index ${index} is undefined`);
         return prevFiles;
       }
       const updatedFiles = [...prevFiles];
@@ -208,11 +259,11 @@ const UploadSection = () => {
   const handleRemove = async (index) => {
     const videoToDelete = videoFiles[index];
 
-    if (videoToDelete && videoToDelete.id) {
+    if (videoToDelete && videoToDelete.videoId) {
       try {
-        await axios.delete(`${baseUrl}/videos/delete/${videoToDelete.id}`, {
+        await axios.delete(`${baseUrl}/videos/delete/${videoToDelete.videoId}`, {
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Authorization': `Bearer ${localStorage.getItem('idToken')}`,
           },
         });
         setVideoFiles(prevFiles => prevFiles.filter((_, i) => i !== index));
@@ -229,7 +280,7 @@ const UploadSection = () => {
       case 'Uploading':
         return (
           <HStack spacing={2}>
-            <Text color="orange.500">Uploading</Text>
+            <Text color="orange.500">Uploading..</Text>
             <Progress hasStripe value={file.uploadProgress} colorScheme="orange" size="sm" width="100px" />
           </HStack>
         );
@@ -316,7 +367,7 @@ const UploadSection = () => {
             <HStack align="center">
               {file.thumbnailPath ? (
                 <Image
-                  src={`${baseUrl}/${file.thumbnailPath}`}
+                  src={`${file.thumbnailPath}`}
                   alt="Video Thumbnail"
                   boxSize="100px"
                   objectFit="cover"
@@ -348,13 +399,12 @@ const UploadSection = () => {
                     }}
                   >
                     <option value="MP4">MP4</option>
-                    <option value="FLV">FLV</option>
-                    <option value="MOV">MOV</option>
-                    {/* <option value="MKV">MKV</option> */}
-                    <option value="AVI">AVI</option>
                     <option value="WEBM">WEBM</option>
+                    <option value="MOV">MOV</option>
+                    <option value="FLV">FLV</option>
+                    <option value="AVI">AVI</option>
                     {/* <option value="WMV">WMV</option> */}
-                    <option value="VOB">VOB</option>
+                    <option value="MPEG">MPEG</option>
                   </Select>
                   <IconButton
                     aria-label="Remove File"

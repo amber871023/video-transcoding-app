@@ -1,77 +1,63 @@
-require('dotenv').config();
-const express = require('express');
-const mongoose = require('mongoose');
-const morgan = require('morgan');
-const cors = require('cors');
-const bodyParser = require('body-parser');
-const path = require('path');
-const createError = require('http-errors');
+import dotenv from 'dotenv';
+import express from 'express';
+import morgan from 'morgan';
+import cors from 'cors';
+import bodyParser from 'body-parser';
+import path from 'path';
+import createError from 'http-errors';
+import { getParameter } from './services/Parameterstore.js';
 
+// Load environment variables from .env file
+dotenv.config();
 
 const app = express();
-
-const mongoDB = process.env.MONGODB_URI;
-
-// MongoDB connection
-mongoose.connect(mongoDB)
-  .then(() => console.log("MongoDB connected"))
-  .catch(err => console.log(`MongoDB connection err: ${err.message}`));
 
 // Middlewares
 app.use(morgan('dev'));
 app.use(cors({
-  // origin: 'http://localhost:3000',// Replace with your frontend URL
+  origin: 'http://localhost:3000', // Replace with your frontend URL
+  //origin: 'http://group50-test.cab432.com:3000',
   credentials: true,
-  origin: 'http://3.25.117.203:3000'
-})); app.use(bodyParser.json());
+}));
+app.use(bodyParser.json());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Routes
-const userRoutes = require('./routes/userRoutes');
-const videoRoutes = require('./routes/videoRoutes');
+import userRoutes from './routes/userRoutes.js';
+import videoRoutes from './routes/videoRoutes.js';
 app.use('/users', userRoutes);
-app.use("/videos", videoRoutes);
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-app.use('/transcoded_videos', express.static(path.join(__dirname, 'transcoded_videos')));
+app.use('/videos', videoRoutes);
+app.use('/uploads', express.static(path.join(path.resolve(), 'uploads')));
+app.use('/transcoded_videos', express.static(path.join(path.resolve(), 'transcoded_videos')));
 
 app.get('/', (req, res) => {
   res.send('Hello, world!');
 });
 
-
 // Start server
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-app.timeout = 1200000; //Increase server timeout 20 minutes
-
-
-// catch 404 and forward to error handler
-app.use(function (req, res, next) {
-  next(createError(404));
+(async () => {
+  try {
+    const PORT = await getParameter('/n11404680/group50/PORT') || 3001;
+    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+    app.timeout = 1200000; // Increase server timeout to 20 minutes
+  } catch (err) {
+    console.error('Failed to start server:', err);
+  }
+})();
+// Add a /status route to check if the server is running
+app.get('/status', (req, res) => {
+  res.status(200).json({ message: 'Server is running' });
 });
 
-
-app.use((err, req, res, next) => {
-  console.error('Server Error:', err);
-  res.status(500).json({ message: 'Internal Server Error', error: err.message });
-});
 
 // Catch 404 and forward to error handler
 app.use((req, res, next) => {
   next(createError(404));
 });
 
-
-// error handler
-app.use(function (err, req, res, next) {
-  // set locals, only providing error in development
-  res.locals.message = err.message;
-  res.locals.error = req.app.get('env') === 'development' ? err : {};
-
-  // render the error page
-  res.status(err.status || 500);
-  res.json({
-    message: res.locals.message,
-    error: res.locals.error,
-  });
+// Error handler
+app.use((err, req, res, next) => {
+  console.error('Server Error:', err);
+  res.status(500).json({ message: 'Internal Server Error', error: err.message });
 });
