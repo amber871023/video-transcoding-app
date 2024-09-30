@@ -1,5 +1,7 @@
-import { CognitoIdentityProviderClient, SignUpCommand, AdminAddUserToGroupCommand, AdminConfirmSignUpCommand, InitiateAuthCommand, 
-        GetUserCommand, AdminDeleteUserCommand, AdminGetUserCommand, ListUsersCommand, AdminDisableUserCommand   } from '@aws-sdk/client-cognito-identity-provider';
+import {
+  CognitoIdentityProviderClient, SignUpCommand, AdminAddUserToGroupCommand, AdminConfirmSignUpCommand, InitiateAuthCommand,
+  GetUserCommand, AdminDeleteUserCommand, AdminGetUserCommand, ListUsersCommand, AdminDisableUserCommand
+} from '@aws-sdk/client-cognito-identity-provider';
 import { CognitoJwtVerifier } from 'aws-jwt-verify';
 import { getSecretValue } from '../services/Secretsmanager.js';
 
@@ -43,81 +45,82 @@ export async function groupUser(username, group) {
 }
 
 // Get user data 
-export async function getUserData( ){
-    const command = new GetUserCommand({
-        AccessToken: accessToken,
-    });
-    try{
-        const response = await client.send(command);
-        console.log("Authenticated user details: ", response);
-        return response;
-    }catch(err){
-        console.error("Error getting user data from Cognito: ", err);
-        throw err;
-    }
+export async function getUserData() {
+  const command = new GetUserCommand({
+    AccessToken: accessToken,
+  });
+  try {
+    const response = await client.send(command);
+    console.log("Authenticated user details: ", response);
+    return response;
+  } catch (err) {
+    console.error("Error getting user data from Cognito: ", err);
+    throw err;
+  }
 
 }
 
 // Get user Id baed on username
-export async function getUserId(username){
-    const command = new AdminGetUserCommand({
-        UserPoolId: secrets.Cognito_USERPOOLID,
-        Username: username, 
-    });
-    try{
-        const response = await client.send(command);
-        // Extract User Sub from UserAttributes
-        const userSubAttribute = response.UserAttributes.find(attr => attr.Name === 'sub');
-        console.log("TEST",userSubAttribute.Value)
-        if (userSubAttribute) {
-            return userSubAttribute.Value; // Return the User Sub
-        } else {
-            console.error('User Sub not found for:', username);
-            return null;} // Return null if User Sub not found
-    }catch(err){
-        if (err.name === 'UserNotFoundException') {
-            console.error('User not found:', username);
-            return null; // Return null if the user does not exist
-        }
-        console.error('Error fetching user ID:', err);
+export async function getUserId(username) {
+  const command = new AdminGetUserCommand({
+    UserPoolId: secrets.Cognito_USERPOOLID,
+    Username: username,
+  });
+  try {
+    const response = await client.send(command);
+    // Extract User Sub from UserAttributes
+    const userSubAttribute = response.UserAttributes.find(attr => attr.Name === 'sub');
+    console.log("TEST", userSubAttribute.Value)
+    if (userSubAttribute) {
+      return userSubAttribute.Value; // Return the User Sub
+    } else {
+      console.error('User Sub not found for:', username);
+      return null;
+    } // Return null if User Sub not found
+  } catch (err) {
+    if (err.name === 'UserNotFoundException') {
+      console.error('User not found:', username);
+      return null; // Return null if the user does not exist
     }
+    console.error('Error fetching user ID:', err);
+  }
 }
 
 // Delete specific user 
-export async function deleteCognitoUser(name){
-    const command = new AdminDeleteUserCommand({
-        UserPoolId: secrets.Cognito_USERPOOLID,
-        Username: name,
-    })
-    try{
-        console.log("HERE4", name)
-        const response = await client.send(command)
-        console.log("Cognito user deleted successfully: ", response);
-        return response;
-    }catch(err){
-        console.error("Error deleting user: ", err);
-    }
+export async function deleteCognitoUser(name) {
+  const command = new AdminDeleteUserCommand({
+    UserPoolId: secrets.Cognito_USERPOOLID,
+    Username: name,
+  })
+  try {
+    console.log("HERE4", name)
+    const response = await client.send(command)
+    console.log("Cognito user deleted successfully: ", response);
+    return response;
+  } catch (err) {
+    console.error("Error deleting user: ", err);
+  }
 }
 
 // Get user lists
-export async function checkUserExist(username){
-    const command = new AdminGetUserCommand({
-        UserPoolId: secrets.Cognito_USERPOOLID,
-        Username: username,
-    });
-    try{
-        console.log("HERE3", name);
-        await client.send(command);
-        return true;
-    }catch(err){
-        if(err.name === 'UserNotFoundException'){
-            // Return false when user is not found
-            return false;
-        }else{
-            console.error('Error checking user existence:', error);
-            throw err;
-        }
+export async function checkUserExist(username) {
+  const command = new AdminGetUserCommand({
+    UserPoolId: secrets.Cognito_USERPOOLID,
+    Username: username,
+  });
+  try {
+    console.log("HERE3", name);
+    await client.send(command);
+    return true;
+  } catch (err) {
+    if (err.name === 'UserNotFoundException') {
+      // Return false when user is not found
+      return false;
+    } else {
+      console.error('Error checking user existence:', error);
+      throw err;
     }
+  }
 }
 
 
@@ -186,31 +189,31 @@ export async function verifyToken(token) {
 }
 
 // Get all the users on Cognito
-export async function getAllUsers(){
+export async function getAllUsers() {
   const command = new ListUsersCommand({
     UserPoolId: secrets.Cognito_USERPOOLID
-  }) 
+  })
   try {
     const response = await client.send(command);
     const usernames = response.Users.map(user => user.Username);
     return usernames;
-  }catch (error) {
+  } catch (error) {
     console.error('Error listing users:', error);
   }
 
 }
 
 // Disable specific user
-export async function disableUser(username){
-    const command = new AdminDisableUserCommand({
-        UserPoolId:secrets.Cognito_USERPOOLID, 
-        Username: username,
-    })
-    try{
-        const response = await client.send(command);
-        console.log("Cognito user disabled successfully: ", response);
-        return response;
-    }catch (error) {
-        console.error('Error disabling users:', error);
-    }
+export async function disableUser(username) {
+  const command = new AdminDisableUserCommand({
+    UserPoolId: secrets.Cognito_USERPOOLID,
+    Username: username,
+  })
+  try {
+    const response = await client.send(command);
+    console.log("Cognito user disabled successfully: ", response);
+    return response;
+  } catch (error) {
+    console.error('Error disabling users:', error);
+  }
 }

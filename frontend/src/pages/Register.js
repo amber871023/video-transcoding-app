@@ -7,8 +7,8 @@ import { ViewIcon, ViewOffIcon } from '@chakra-ui/icons';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
-const baseUrl = "http://localhost:3001"; // Update with your server's base URL
-//const baseUrl = "http://group50-test.cab432.com:3001";
+// const baseUrl = "http://localhost:3001"; // Update with your server's base URL
+const baseUrl = "http://group50-test.cab432.com:3001";
 
 const Register = () => {
   const [email, setEmail] = useState('');
@@ -30,7 +30,7 @@ const Register = () => {
       toast({
         title: 'Registration successful.',
         status: 'success',
-        duration: 5000,
+        duration: 3000,
         isClosable: true,
       });
       setEmail('');

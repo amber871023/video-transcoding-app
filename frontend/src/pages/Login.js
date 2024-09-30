@@ -8,8 +8,8 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-const baseUrl = 'http://localhost:3001';
-//const baseUrl = "http://group50-test.cab432.com:3001";
+// const baseUrl = 'http://localhost:3001';
+const baseUrl = "http://group50-test.cab432.com:3001";
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -31,7 +31,7 @@ const LoginPage = () => {
       toast({
         title: 'Login successful.',
         status: 'success',
-        duration: 5000,
+        duration: 3000,
         isClosable: true,
       });
       setEmail('');
@@ -41,7 +41,7 @@ const LoginPage = () => {
       } else {
         navigate('/'); // Redirect to home page for regular users
       }
-    }catch{
+    } catch {
       setError('Invalid email or password.');
       toast({
         title: 'Login failed.',
