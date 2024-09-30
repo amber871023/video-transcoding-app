@@ -27,7 +27,7 @@ const VideoPage = () => {
   const [videoToDelete, setVideoToDelete] = useState(null);
   const [isReformatOpen, setIsReformatOpen] = useState(false);
   const [format, setFormat] = useState('MP4');
-  const [videoToReformat, setVideoToReformat] = useState(null);
+  const [videoToReformat, setVideoToReformat] = useState(undefined);
   const [conversionProgress, setConversionProgress] = useState({});
   const cancelRef = React.useRef();
   const toast = useToast();
@@ -67,23 +67,27 @@ const VideoPage = () => {
 
   const handleReformat = async () => {
     if (!videoToReformat) {
+      console.error('Cannot reformat without a video ID.');
       return;
     }
 
     setConversionProgress((prev) => ({ ...prev, [videoToReformat]: 0 }));
 
     try {
+      const formData = new FormData();
+      formData.append('videoId', videoToReformat);
+      formData.append('format', format.toLowerCase());
+
       const response = await fetch(`${baseUrl}/videos/reformat/${videoToReformat}`, {
         method: 'POST',
+        body: formData,
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('idToken')}`,
         },
-        body: JSON.stringify({ format: format.toLowerCase() }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to initiate reformatting');
+        throw new Error('Network response was not ok');
       }
 
       const reader = response.body.getReader();
@@ -94,14 +98,14 @@ const VideoPage = () => {
         const { value, done: readerDone } = await reader.read();
         done = readerDone;
         const chunk = decoder.decode(value, { stream: true });
-
         const cleanedChunk = chunk.trim().replace(/^data:\s*/, '');
         const progress = Number(cleanedChunk);
 
-        if (!isNaN(progress)) {
+        console.log('Progress received from server:', progress); // Add this log to see the progress
+
+        if (!isNaN(progress) && progress > 0) {
           setConversionProgress((prev) => ({ ...prev, [videoToReformat]: progress }));
 
-          // Check if the conversion is completed
           if (progress >= 100) {
             toast({
               title: 'Video reformatted successfully.',
@@ -109,24 +113,70 @@ const VideoPage = () => {
               duration: 5000,
               isClosable: true,
             });
+
+            // Reset the state after successful conversion
+            setConversionProgress((prev) => ({ ...prev, [videoToReformat]: undefined }));
             closeReformatDialog();
             await fetchVideos(); // Refresh the video list
           }
         }
       }
-    } catch (error) {
-      // toast({
-      //   title: 'Error reformatting video.',
-      //   description: 'Please try again.',
-      //   status: 'error',
-      //   duration: 5000,
-      //   isClosable: true,
-      // });
 
-      // Retry logic after failure
-      setTimeout(handleReformat, 3000);
+    } catch (error) {
+      console.error('Error during reformat:', error.message);
+
+      // Retry logic: Exponential Backoff
+      if (
+        error.message.includes('network error') ||
+        error.message.includes('ERR_CONNECTION_REFUSED') ||
+        error.message.includes('ERR_INCOMPLETE_CHUNKED_ENCODING')
+      ) {
+        toast({
+          title: 'Connection Error',
+          description: 'Failed to reformat the video. Connection is down.',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+
+        // Retry logic using exponential backoff
+        let attempt = 1;
+        const maxAttempts = 5;
+        const retryInterval = setInterval(async () => {
+          try {
+            const healthResponse = await axios.get(`${baseUrl}/status`, { timeout: 5000 });
+
+            if (healthResponse.status === 200) {
+              clearInterval(retryInterval);
+              toast({
+                title: 'Backend Available',
+                description: 'Backend is available. Retrying reformatting...',
+                status: 'success',
+                duration: 5000,
+                isClosable: true,
+              });
+
+              await handleReformat(); // Retry reformatting
+            }
+          } catch (retryError) {
+            console.log(`Attempt ${attempt} failed, retrying...`);
+            if (attempt >= maxAttempts) {
+              clearInterval(retryInterval);
+              toast({
+                title: 'Reformatting Failed',
+                description: 'Maximum retry attempts reached. Please try again later.',
+                status: 'error',
+                duration: 5000,
+                isClosable: true,
+              });
+            }
+            attempt++;
+          }
+        }, Math.min(attempt * 2000, 10000)); // Exponential backoff with max 10 seconds delay
+      }
     }
   };
+
 
   const handleDownload = async (videoId) => {
     try {
@@ -196,7 +246,7 @@ const VideoPage = () => {
 
   const closeDeleteDialog = () => {
     setIsDeleteOpen(false);
-    setVideoToDelete(null);
+    setVideoToDelete(undefined);
   };
 
   const handleDeleteVideo = async () => {
@@ -233,7 +283,7 @@ const VideoPage = () => {
 
   const closeReformatDialog = () => {
     setIsReformatOpen(false);
-    setVideoToReformat(null);
+    setVideoToReformat(undefined);
     setFormat('MP4');
   };
 

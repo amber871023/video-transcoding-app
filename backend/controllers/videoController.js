@@ -393,6 +393,11 @@ export const reformatVideo = async (req, res) => {
     let lastProgress = 0;
     const MIN_PROGRESS_INCREMENT = 1;
 
+    // Send heartbeat to keep connection alive during long conversions
+    const heartbeatInterval = setInterval(() => {
+      res.write(': heartbeat\n\n'); // Send a comment to keep the connection alive
+    }, 15000); // Every 15 seconds
+
     let videoCodec, audioCodec, extraOptions;
 
     switch (outputFormat) {
@@ -437,9 +442,6 @@ export const reformatVideo = async (req, res) => {
         .videoCodec(videoCodec)
         .audioCodec(audioCodec)
         .format(outputFormat)
-        // .on('start', (commandLine) => {
-        //   console.log('FFmpeg command:', commandLine);
-        // })
         .on('codecData', (data) => {
           const durationParts = data.duration.split(':');
           totalDuration = parseFloat(durationParts[0]) * 3600 + parseFloat(durationParts[1]) * 60 + parseFloat(durationParts[2]);
@@ -470,16 +472,25 @@ export const reformatVideo = async (req, res) => {
     await putObject(outputKey, fileStream);
     await updateVideoTranscodedPath(videoId, outputUrl, outputFormat);
 
+    // Send final 100% progress
     res.write('data: 100\n\n');
+    clearInterval(heartbeatInterval);
     res.end();
 
+    // Clean up temporary files
     fs.unlinkSync(tempVideoPath);
     fs.unlinkSync(tempOutputPath);
+
+    // Stop heartbeat interval
+    clearInterval(heartbeatInterval);
 
   } catch (err) {
     console.error('Error during reformatting:', err.message);
     res.write('data: error\n\n');
     res.end();
+
+    // Stop heartbeat interval in case of error
+    clearInterval(heartbeatInterval);
   }
 };
 
