@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import {Box, Container, Text, VStack, IconButton, useToast, Button} from '@chakra-ui/react';
+import { Box, Container, Text, VStack, IconButton, useToast, Button } from '@chakra-ui/react';
 import axios from 'axios';
 import { FaTrash } from 'react-icons/fa';
 
-//const baseUrl = "http://group50-test.cab432.com:3001";
+const baseUrl = "http://group50-test.cab432.com:3001";
+// const baseUrl = 'http://localhost:3001';
 
-const baseUrl = 'http://localhost:3001';
 const Admin = () => {
   const [users, setUsers] = useState([]);
   const [error, setError] = useState(null);
@@ -13,7 +13,6 @@ const Admin = () => {
   const toast = useToast();
   const fetchUsers = async () => {
     if (!token) return; // Only fetch if token is available
-console.log(token)
     try {
       const response = await axios.get(`${baseUrl}/users/getlist`, {
         headers: {
@@ -22,12 +21,12 @@ console.log(token)
       });
       // Sort users by username or any other property you wish to maintain order
       const sortedUsers = response.data.sort((a, b) => {
-      if (a < b) return -1; // Ascending order
-      if (a > b) return 1;  // Ascending order
-      return 0; // Equal
-    });
+        if (a < b) return -1; // Ascending order
+        if (a > b) return 1;  // Ascending order
+        return 0; // Equal
+      });
 
-    setUsers(sortedUsers); // Set the sorted users data in state
+      setUsers(sortedUsers); // Set the sorted users data in state
     } catch (err) {
       setError('Failed to load users'); // Handle error
       console.error(err);
@@ -35,9 +34,9 @@ console.log(token)
   };
 
   useEffect(() => {
-    fetchUsers();  
+    fetchUsers();
 
-     // Call the fetch function
+    // Call the fetch function
   }, [token]); // Dependency array to re-run effect if token changes
 
   const handleDeleteUser = async (username) => {
@@ -53,7 +52,7 @@ console.log(token)
         title: 'User deleted.',
         description: 'User has been successfully deleted.',
         status: 'success',
-        duration: 5000,
+        duration: 3000,
         isClosable: true,
       });
     } catch (error) {
@@ -61,7 +60,7 @@ console.log(token)
         title: 'Error deleting user.',
         description: 'Please try again.',
         status: 'error',
-        duration: 5000,
+        duration: 3000,
         isClosable: true,
       });
       console.error(error);
@@ -87,7 +86,7 @@ console.log(token)
         title: isDisabled ? 'User enabled.' : 'User disabled.',
         description: `User has been successfully ${isDisabled ? 'enabled' : 'disabled'}.`,
         status: 'success',
-        duration: 5000,
+        duration: 3000,
         isClosable: true,
       });
     } catch (error) {
@@ -95,7 +94,7 @@ console.log(token)
         title: `Error ${isDisabled ? 'enabling' : 'disabling'} user.`,
         description: 'Please try again.',
         status: 'error',
-        duration: 5000,
+        duration: 3000,
         isClosable: true,
       });
       console.error(error);

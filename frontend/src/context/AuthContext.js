@@ -29,7 +29,6 @@ export const AuthProvider = ({ children }) => {
     setIsLoggedIn(true);
     setUsername(userData.username);
     setUserGroup(userData.userGroup);
-    console.log(userData);
     localStorage.setItem('idToken', userData.idToken);
     localStorage.setItem('username', userData.username);
     localStorage.setItem('userGroup', userData.userGroup);
