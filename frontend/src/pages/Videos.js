@@ -18,7 +18,7 @@ const formatDuration = (durationInSeconds) => {
 };
 
 // const baseUrl = "http://localhost:3001";
-const baseUrl = "http://group50-test.cab432.com:3001";
+const baseUrl = "http://group50.cab432.com:3001";
 
 const VideoPage = () => {
   const [videos, setVideos] = useState([]);

@@ -3,8 +3,8 @@ import { DynamoDBDocumentClient, PutCommand, GetCommand, QueryCommand, UpdateCom
 import { getParameter } from '../services/Parameterstore.js'; // Ensure .js extension for ES Modules
 
 // Retrieve environment variables from AWS Parameter Store
-const qutUsername = await getParameter('/n11404680/group50/QUT_USERNAME');
-const videoTableName = "n11404680-videos";
+const qutUsername = await getParameter('/n11422807/group50/QUT_USERNAME');
+const videoTableName = "n11422807-videos";
 
 // Initialize DynamoDB client and document client
 const client = new DynamoDBClient({ region: 'ap-southeast-2' });

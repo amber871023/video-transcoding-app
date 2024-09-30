@@ -16,7 +16,7 @@ const app = express();
 app.use(morgan('dev'));
 app.use(cors({
   // origin: 'http://localhost:3000', // Replace with your frontend URL
-  origin: 'http://group50-test.cab432.com:3000',
+  origin: 'http://group50.cab432.com:3000',
   credentials: true,
 }));
 app.use(bodyParser.json());
@@ -38,7 +38,7 @@ app.get('/', (req, res) => {
 // Start server
 (async () => {
   try {
-    const PORT = await getParameter('/n11404680/group50/PORT') || 3001;
+    const PORT = await getParameter('/n11422807/group50/PORT') || 3001;
     app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
     app.timeout = 1200000; // Increase server timeout to 20 minutes
   } catch (err) {
