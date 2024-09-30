@@ -39,7 +39,7 @@
 - **What data is being stored?:** User and video metadata
 - **Why is this service suited to this data?:** DynamoDB provides fast and predictable performance with seamless scalability for key-value access patterns.
 - **Why are the other services used not suitable for this data?:** S3 and RDS do not offer the same level of performance for real-time key-value lookups.
-- **Bucket/instance/table name:** n11422807-users, n11422807-videos
+- **Bucket/instance/table name:** n11404680-users, n11404680-videos
 - **Video timestamp:** [Video timestamp where you demonstrated this feature]
 - **Relevant files:**
   - /backend/services/DynamoDBService.js
@@ -139,7 +139,7 @@
 
 ### Parameter store
 
-- **Parameter names:** /n11422807/group50/PORT, /n11422807/group50/QUT_USERNAME
+- **Parameter names:** /n11404680/group50/PORT, /n11404680/group50/QUT_USERNAME
 - **Video timestamp:** [Video timestamp]
 - **Relevant files:**
   - /backend/app.js
@@ -150,7 +150,7 @@
 
 ### Secrets manager
 
-- **Secrets names:** n11422807-Cognito-Credentials
+- **Secrets names:** n11404680-Cognito-Credentials
 - **Video timestamp:** [Video timestamp]
 - **Relevant files:**
   - /backend/services/Secretsmanager.js
