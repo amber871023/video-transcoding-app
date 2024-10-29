@@ -18,7 +18,7 @@ const formatDuration = (durationInSeconds) => {
 };
 
 // const baseUrl = "http://localhost:3001";
-const baseUrl = "http://group50.cab432.com";
+const baseUrl = "http://group50.cab432.com:3001";
 
 const VideoPage = () => {
   const [videos, setVideos] = useState([]);
@@ -87,19 +87,7 @@ const VideoPage = () => {
       });
 
       if (!response.ok) {
-        const errorResponse = await response.json();
-        if (errorResponse.message === 'Input format is the same as the output format. Cannot reformat.') {
-          toast({
-            title: 'Reformat Error',
-            description: 'The input and output formats are the same. Please select a different format.',
-            status: 'error',
-            duration: 3000,
-            isClosable: true,
-          });
-          return;
-        } else {
-          throw new Error('Failed to initiate reformatting');
-        }
+        throw new Error('Network response was not ok');
       }
 
       const reader = response.body.getReader();
@@ -113,6 +101,7 @@ const VideoPage = () => {
         const cleanedChunk = chunk.trim().replace(/^data:\s*/, '');
         const progress = Number(cleanedChunk);
 
+        console.log('Progress received from server:', progress); // Add this log to see the progress
 
         if (!isNaN(progress) && progress > 0) {
           setConversionProgress((prev) => ({ ...prev, [videoToReformat]: progress }));
@@ -121,7 +110,7 @@ const VideoPage = () => {
             toast({
               title: 'Video reformatted successfully.',
               status: 'success',
-              duration: 3000,
+              duration: 5000,
               isClosable: true,
             });
 
@@ -146,7 +135,7 @@ const VideoPage = () => {
           title: 'Connection Error',
           description: 'Failed to reformat the video. Connection is down.',
           status: 'error',
-          duration: 3000,
+          duration: 5000,
           isClosable: true,
         });
 
@@ -163,21 +152,21 @@ const VideoPage = () => {
                 title: 'Backend Available',
                 description: 'Backend is available. Retrying reformatting...',
                 status: 'success',
-                duration: 3000,
+                duration: 5000,
                 isClosable: true,
               });
 
               await handleReformat(); // Retry reformatting
             }
           } catch (retryError) {
-            // console.log(`Attempt ${attempt} failed, retrying...`);
+            console.log(`Attempt ${attempt} failed, retrying...`);
             if (attempt >= maxAttempts) {
               clearInterval(retryInterval);
               toast({
                 title: 'Reformatting Failed',
                 description: 'Maximum retry attempts reached. Please try again later.',
                 status: 'error',
-                duration: 3000,
+                duration: 5000,
                 isClosable: true,
               });
             }
@@ -187,6 +176,7 @@ const VideoPage = () => {
       }
     }
   };
+
 
   const handleDownload = async (videoId) => {
     try {
@@ -234,7 +224,7 @@ const VideoPage = () => {
         title: 'Download Error',
         description: 'Failed to download the video. Please try again later.',
         status: 'error',
-        duration: 3000,
+        duration: 5000,
         isClosable: true,
       });
     }
@@ -270,7 +260,7 @@ const VideoPage = () => {
       toast({
         title: 'Video deleted successfully.',
         status: 'success',
-        duration: 3000,
+        duration: 5000,
         isClosable: true,
       });
     } catch (error) {
@@ -278,7 +268,7 @@ const VideoPage = () => {
         title: 'Error deleting video.',
         description: 'Please try again.',
         status: 'error',
-        duration: 3000,
+        duration: 5000,
         isClosable: true,
       });
     } finally {
@@ -487,4 +477,3 @@ const VideoPage = () => {
 };
 
 export default VideoPage;
-
