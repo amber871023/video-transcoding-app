@@ -16,7 +16,7 @@ const app = express();
 app.use(morgan('dev'));
 app.use(cors({
   // origin: 'http://localhost:3000', // Replace with your frontend URL
-  origin: 'http://group50.cab432.com:3000',
+  origin: 'https://group50.cab432.com',
   credentials: true,
 }));
 app.use(bodyParser.json());
@@ -26,10 +26,10 @@ app.use(express.urlencoded({ extended: true }));
 // Routes
 import userRoutes from './routes/userRoutes.js';
 import videoRoutes from './routes/videoRoutes.js';
-app.use('/users', userRoutes);
-app.use('/videos', videoRoutes);
-app.use('/uploads', express.static(path.join(path.resolve(), 'uploads')));
-app.use('/transcoded_videos', express.static(path.join(path.resolve(), 'transcoded_videos')));
+app.use('/api/users', userRoutes);
+app.use('/api/videos', videoRoutes);
+app.use('/api/uploads', express.static(path.join(path.resolve(), 'uploads')));
+app.use('/api/transcoded_videos', express.static(path.join(path.resolve(), 'transcoded_videos')));
 
 app.get('/', (req, res) => {
   res.send('Hello, world!');
