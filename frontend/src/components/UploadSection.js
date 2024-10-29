@@ -6,7 +6,7 @@ import CustomButton from './CustomButton';
 import axios from 'axios';
 
 // const baseUrl = "http://localhost:3001";
-const baseUrl = "http://group50.cab432.com:3001";
+const baseUrl = "http://group50.cab432.com";
 
 const UploadSection = () => {
   const [videoFiles, setVideoFiles] = useState([]);

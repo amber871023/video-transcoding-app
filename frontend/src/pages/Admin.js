@@ -3,7 +3,7 @@ import { Box, Container, Text, VStack, IconButton, useToast, Button } from '@cha
 import axios from 'axios';
 import { FaTrash } from 'react-icons/fa';
 
-const baseUrl = "http://group50.cab432.com:3001";
+const baseUrl = "http://group50.cab432.com";
 // const baseUrl = 'http://localhost:3001';
 
 const Admin = () => {
