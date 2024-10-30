@@ -18,7 +18,7 @@ export async function pollSQS(){
         console.log("Receiving a message: ", response);
         // Process body if there are messages in the queue
         if(response.Messages){
-            for(const message in response.Messages){
+            for(const message of response.Messages){
                 // retrieve data from the body 
                 const videoDetails = JSON.parse(message.Body);   
                 const url = videoDetails.url;
