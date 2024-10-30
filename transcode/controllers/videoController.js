@@ -4,7 +4,7 @@ import ffmpeg from 'fluent-ffmpeg';
 import { putObject,  getURLIncline } from '../services/S3.js';
 import { getVideoById, updateVideoTranscodedPath} from '../models/Video.js';
 import https from 'https';
-import { SQSClient, ReceiveMessageCommand, DeleteMessageCommand  } from '@aws-sdk/client-sqs';
+import { SQSClient } from '@aws-sdk/client-sqs';
 
 const sqsQueueUrl = "https://sqs.ap-southeast-2.amazonaws.com/901444280953/group50-queue";
 const client = new SQSClient({ region: "ap-southeast-2" });
