@@ -15,8 +15,8 @@ const app = express();
 // Middlewares
 app.use(morgan('dev'));
 app.use(cors({
-  // origin: 'http://localhost:3000', // Replace with your frontend URL
-  origin: 'http://group50.cab432.com:3000',
+   origin: 'http://localhost:3000', // Replace with your frontend URL
+  //origin: 'http://group50.cab432.com:3000',
   credentials: true,
 }));
 app.use(bodyParser.json());
@@ -26,6 +26,7 @@ app.use(express.urlencoded({ extended: true }));
 // Routes
 import userRoutes from './routes/userRoutes.js';
 import videoRoutes from './routes/videoRoutes.js';
+import { PutObjectRequestFilterSensitiveLog } from '@aws-sdk/client-s3';
 app.use('/users', userRoutes);
 app.use('/videos', videoRoutes);
 app.use('/uploads', express.static(path.join(path.resolve(), 'uploads')));
@@ -38,8 +39,8 @@ app.get('/', (req, res) => {
 // Start server
 (async () => {
   try {
-    const PORT = await getParameter('/n11404680/group50/PORT') || 5000;
-    app.listen(5000, () => console.log(`Server running on port ${PORT}`));
+    const PORT = await getParameter('/n11404680/group50/PORT') || 3001;
+    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
     app.timeout = 1200000; // Increase server timeout to 20 minutes
   } catch (err) {
     console.error('Failed to start server:', err);

@@ -36,7 +36,7 @@ app.use('/transcoded_videos', express.static(path.join(path.resolve(), 'transcod
   try {
     pollSQS();
     const PORT = await getParameter('/n11404680/group50/PORT') || 5000;
-    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+    app.listen(5000, () => console.log(`Server running on port ${PORT}`));
     app.timeout = 1200000; // Increase server timeout to 20 minutes
 
   } catch (err) {

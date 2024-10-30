@@ -1,7 +1,7 @@
 import { SQSClient, ReceiveMessageCommand, DeleteMessageCommand } from '@aws-sdk/client-sqs';
 import { convertVideo } from '../controllers/videoController.js';
 
-const sqsQueueUrl = "https://sqs.ap-southeast-2.amazonaws.com/901444280953/group50-queue";
+const sqsQueueUrl = "https://sqs.ap-southeast-2.amazonaws.com/901444280953/group50";
 const client = new SQSClient({
   region: "ap-southeast-2",
 });

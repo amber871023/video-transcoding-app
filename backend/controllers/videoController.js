@@ -15,7 +15,7 @@ export const uploadVideo = async (req, res) => {
     if (!req.file || !req.file.buffer) {
       return res.status(400).json({ message: 'No file uploaded.' });
     }
-
+    const convertFormat = req.body.format;
     const videoBuffer = req.file.buffer;
     const videoId = uuidv4();
     let format = path.extname(req.file.originalname).substring(1);
@@ -97,8 +97,8 @@ export const uploadVideo = async (req, res) => {
       await deleteObject(thumbnailKey);
       return res.status(500).json({ message: 'Failed to save video metadata.', error: dbError.message });
     }
-    const formats = 'mp4';
-    notifyConversion(videoURL,videoId,formats)
+    
+    notifyConversion(videoURL,videoId,convertFormat)
 
     // Cleanup temporary files
     fs.unlinkSync(thumbnailPath);

@@ -6,7 +6,7 @@ import { getVideoById, updateVideoTranscodedPath} from '../models/Video.js';
 import https from 'https';
 import { SQSClient } from '@aws-sdk/client-sqs';
 
-const sqsQueueUrl = "https://sqs.ap-southeast-2.amazonaws.com/901444280953/group50-queue";
+const sqsQueueUrl = "https://sqs.ap-southeast-2.amazonaws.com/901444280953/group50";
 const client = new SQSClient({ region: "ap-southeast-2" });
 
 // Function to safely download a file from S3
@@ -45,7 +45,7 @@ export async function convertVideo(url, id, format) {
 
     const video = await getVideoById(id);
     if (!video) {
-      console.err("Video not found");
+      console.error("Video not found");
       // return res.status(404).json({ message: 'Video not found.' });
     }
 
