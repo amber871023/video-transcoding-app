@@ -45,14 +45,15 @@ export async function convertVideo(url, id, format) {
 
     const video = await getVideoById(id);
     if (!video) {
-      return res.status(404).json({ message: 'Video not found.' });
+      console.err("Video not found");
+      // return res.status(404).json({ message: 'Video not found.' });
     }
 
     // const videoURL = video.originalVideoPath;
     const originalExtension = path.extname(new URL(url).pathname);
     // Check if the input format is the same as the requested output format
     if (originalExtension.replace('.', '').toLowerCase() === format) {
-      return res.status(400).json({ message: 'Input format is the same as the output format. Cannot reformat.' });
+      // return res.status(400).json({ message: 'Input format is the same as the output format. Cannot reformat.' });
     }
     const tempVideoPath = `/tmp/${id}${originalExtension}`;
     tempFiles.push(tempVideoPath); // Track temp file for cleanup
@@ -70,9 +71,9 @@ export async function convertVideo(url, id, format) {
     tempFiles.push(tempOutputPath); // Track temp file for cleanup
 
     // Set headers for SSE
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
+    // res.setHeader('Content-Type', 'text/event-stream');
+    // res.setHeader('Cache-Control', 'no-cache');
+    // res.setHeader('Connection', 'keep-alive');
 
     let totalDuration = 0;
     let lastProgress = 0;
@@ -153,11 +154,10 @@ export async function convertVideo(url, id, format) {
     await putObject(outputKey, fileStream);
     await updateVideoTranscodedPath(id, outputUrl, format);
 
-    res.write('data: 100\n\n');
-    res.end();
+    // res.write('data: 100\n\n');
+    // res.end();
   } catch (err) {
     console.error('Error during transcoding:', err.message);
-    res.status(500).json({ message: 'Error during transcoding.', error: err.message });
   } finally {
     // Cleanup temporary files
     tempFiles.forEach((filePath) => {
