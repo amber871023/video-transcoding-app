@@ -14,11 +14,18 @@ const app = express();
 
 // Middlewares
 app.use(morgan('dev'));
-app.use(cors({
-  // origin: 'http://localhost:3000', // Replace with your frontend URL
-  origin: 'https://group50.cab432.com',
-  credentials: true,
-}));
+// Proper CORS Configuration with Proxy Handling
+const corsOptions = {
+  origin: ['http://localhost:3000', 'https://group50.cab432.com'], // Allowed origins
+  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS', // Allowed methods
+  credentials: true, // Allow sending cookies
+  allowedHeaders: 'Content-Type, Authorization', // Allowed headers
+  exposedHeaders: 'Content-Length, X-Requested-With', // Optionally expose headers
+};
+
+// Handle Preflight (OPTIONS) Requests for CORS
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // Allow OPTIONS for all routes
 app.use(bodyParser.json());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -39,7 +46,7 @@ app.get('/', (req, res) => {
 (async () => {
   try {
     const PORT = await getParameter('/n11422807/group50/PORT') || 3001;
-    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+    app.listen(PORT, '0.0.0.0', () => console.log(`Server running on port ${PORT}`));
     app.timeout = 1200000; // Increase server timeout to 20 minutes
   } catch (err) {
     console.error('Failed to start server:', err);
