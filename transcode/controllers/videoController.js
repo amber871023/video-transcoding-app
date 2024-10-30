@@ -136,7 +136,7 @@ export async function convertVideo(url, id, format) {
 
           if (!isNaN(percentComplete) && percentComplete > lastProgress) {
             if ((percentComplete - lastProgress) >= MIN_PROGRESS_INCREMENT) {
-              res.write(`data: ${Math.round(percentComplete)}\n\n`);
+              //res.write(`data: ${Math.round(percentComplete)}\n\n`);
               lastProgress = percentComplete;
             }
           }
