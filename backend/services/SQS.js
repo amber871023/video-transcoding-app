@@ -7,9 +7,9 @@ const client = new SQSClient({
 
 export async function notifyConversion(videoUrl, videoId, covertFormat){
   const message = JSON.stringify({ 
-    url:videoUrl, 
-    id: videoId,
-    format: covertFormat, 
+    videoUrl, 
+    videoId,
+    covertFormat
     
 });
   const command = new SendMessageCommand({
@@ -18,7 +18,11 @@ export async function notifyConversion(videoUrl, videoId, covertFormat){
     MessageBody: message,
   });
 
-  const response = await client.send(command);
-  console.log('Sent message to SQS: ', response);
+  try {
+    const response = await client.send(command);
+    console.log("Message sent to SQS:", response);
+  } catch (error) {
+    console.error("Error sending message to SQS:", error);
+  }
 
 };
