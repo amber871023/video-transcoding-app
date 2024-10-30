@@ -6,6 +6,7 @@ import bodyParser from 'body-parser';
 import path from 'path';
 import createError from 'http-errors';
 import { getParameter } from './services/Parameterstore.js';
+import { pollSQS } from './services/SQS.js';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -33,9 +34,11 @@ app.use('/transcoded_videos', express.static(path.join(path.resolve(), 'transcod
 // Start server
 (async () => {
   try {
+    pollSQS();
     const PORT = await getParameter('/n11404680/group50/PORT') || 5000;
     app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
     app.timeout = 1200000; // Increase server timeout to 20 minutes
+
   } catch (err) {
     console.error('Failed to start server:', err);
   }

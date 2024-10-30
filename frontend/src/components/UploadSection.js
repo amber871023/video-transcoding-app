@@ -67,6 +67,7 @@ const UploadSection = () => {
     try {
       const formData = new FormData();
       formData.append('video', file.file);
+      formData.append('format', file.format.toLowerCase());
 
       updateFileStatus(index, 'Uploading');
 

@@ -5,7 +5,7 @@ import path from 'path';
 // Middleware imports
 import { authorize } from '../middlewares/auth.js';
 import { optAuth as optionalAuthorize } from '../middlewares/optAuth.js';
-import { uploadVideo, convertVideo, downloadVideo, deleteVideo, getUserVideos, reformatVideo } from '../controllers/videoController.js';
+import { uploadVideo, downloadVideo, deleteVideo, getUserVideos, reformatVideo } from '../controllers/videoController.js';
 
 // Setting up router and other utilities
 const router = express.Router();
@@ -47,7 +47,7 @@ const upload = multer({
 });
 
 router.post('/upload', optionalAuthorize, upload.single('video'), uploadVideo);
-router.post('/convert', optionalAuthorize, upload.none(), convertVideo);
+// router.post('/convert', optionalAuthorize, upload.none(), convertVideo);
 router.post('/reformat/:id', optionalAuthorize, upload.none(), reformatVideo);
 router.delete('/delete/:id', optionalAuthorize, deleteVideo);
 router.get('/download/:id', optionalAuthorize, downloadVideo);

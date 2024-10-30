@@ -7,7 +7,7 @@ import { getSecretValue } from '../services/Secretsmanager.js';
 
 const client = new CognitoIdentityProviderClient({ region: 'ap-southeast-2' });
 
-const secrets = await getSecretValue("n11422807-Cognito-Credentials");
+const secrets = await getSecretValue("n11404680-Cognito-Credentials");
 
 export async function signUp(username, password, email) {
   console.log("Signing up user");

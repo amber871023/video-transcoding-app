@@ -17,7 +17,7 @@ async function tableExists(tableName) {
 
 // Function to create the User table
 async function createUserTable() {
-  const tableName = "n11422807-users";
+  const tableName = "n11404680-users";
   if (await tableExists(tableName)) {
     console.log(`Table ${tableName} already exists.`);
     return;
@@ -49,7 +49,7 @@ async function createUserTable() {
 
 // Function to create the Video table
 async function createVideoTable() {
-  const tableName = "n11422807-videos";
+  const tableName = "n11404680-videos";
   if (await tableExists(tableName)) {
     console.log(`Table ${tableName} already exists.`);
     return;

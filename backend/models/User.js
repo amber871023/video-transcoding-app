@@ -6,10 +6,10 @@ import { getParameter } from '../services/Parameterstore.js';
 
 // Initialize DynamoDB client
 const client = new DynamoDBClient({ region: 'ap-southeast-2' });
-const userTableName = "n11422807-users";
+const userTableName = "n11404680-users";
 
 // Retrieve environment variables from AWS Parameter Store
-const qutUsername = await getParameter('/n11422807/group50/QUT_USERNAME');
+const qutUsername = await getParameter('/n11404680/group50/QUT_USERNAME');
 // const qutUsername = process.env.QUT_USERNAME;
 
 // Function to create a user
