@@ -4,7 +4,10 @@ import ffmpeg from 'fluent-ffmpeg';
 import { putObject,  getURLIncline } from '../services/S3.js';
 import { getVideoById, updateVideoTranscodedPath} from '../models/Video.js';
 import https from 'https';
+import { SQSClient, ReceiveMessageCommand, DeleteMessageCommand  } from '@aws-sdk/client-sqs';
 
+const sqsQueueUrl = "https://sqs.ap-southeast-2.amazonaws.com/901444280953/group50-queue";
+const client = new SQSClient({ region: "ap-southeast-2" });
 
 // Function to safely download a file from S3
 function downloadFileFromS3(url, outputPath) {
@@ -30,40 +33,40 @@ function downloadFileFromS3(url, outputPath) {
 }
 
 
-export const convertVideo = async (req, res) => {
-  const videoId = req.body.videoId;
-  const outputFormat = req.body.format.toLowerCase();
+export async function convertVideo(url, id, format) {
+  //const videoId = req.body.videoId;
+  // const outputFormat = req.body.format.toLowerCase();
   const tempFiles = [];
 
   try {
-    if (!videoId) {
-      return res.status(400).json({ message: 'No video ID provided.' });
-    }
+    // if (!videoId) {
+    //   return res.status(400).json({ message: 'No video ID provided.' });
+    // }
 
-    const video = await getVideoById(videoId);
+    const video = await getVideoById(id);
     if (!video) {
       return res.status(404).json({ message: 'Video not found.' });
     }
 
-    const videoURL = video.originalVideoPath;
-    const originalExtension = path.extname(new URL(videoURL).pathname);
+    // const videoURL = video.originalVideoPath;
+    const originalExtension = path.extname(new URL(url).pathname);
     // Check if the input format is the same as the requested output format
-    if (originalExtension.replace('.', '').toLowerCase() === outputFormat) {
+    if (originalExtension.replace('.', '').toLowerCase() === format) {
       return res.status(400).json({ message: 'Input format is the same as the output format. Cannot reformat.' });
     }
-    const tempVideoPath = `/tmp/${videoId}${originalExtension}`;
+    const tempVideoPath = `/tmp/${id}${originalExtension}`;
     tempFiles.push(tempVideoPath); // Track temp file for cleanup
 
     // Download the video to a temporary path
-    await downloadFileFromS3(videoURL, tempVideoPath);
+    await downloadFileFromS3(url, tempVideoPath);
     if (!fs.existsSync(tempVideoPath)) {
       throw new Error(`File not downloaded correctly to ${tempVideoPath}`);
     }
 
     // Define transcoded output paths
-    const outputKey = `transcoded/${videoId}.${outputFormat}`;
+    const outputKey = `transcoded/${id}.${format}`;
     const outputUrl = await getURLIncline(outputKey);
-    const tempOutputPath = `/tmp/${videoId}.${outputFormat}`;
+    const tempOutputPath = `/tmp/${id}.${format}`;
     tempFiles.push(tempOutputPath); // Track temp file for cleanup
 
     // Set headers for SSE
@@ -76,7 +79,7 @@ export const convertVideo = async (req, res) => {
     const MIN_PROGRESS_INCREMENT = 1;
 
     let videoCodec, audioCodec, extraOptions;
-    switch (outputFormat) {
+    switch (format) {
       case 'mpeg':
         videoCodec = 'mpeg2video';
         audioCodec = 'mp2';
@@ -117,7 +120,7 @@ export const convertVideo = async (req, res) => {
         .outputOptions(...extraOptions)
         .videoCodec(videoCodec)
         .audioCodec(audioCodec)
-        .format(outputFormat)
+        .format(format)
         // .on('start', (commandLine) => {
         //   console.log('FFmpeg command:', commandLine);
         // })
@@ -148,7 +151,7 @@ export const convertVideo = async (req, res) => {
     // Upload the transcoded file to S3
     const fileStream = fs.createReadStream(tempOutputPath);
     await putObject(outputKey, fileStream);
-    await updateVideoTranscodedPath(videoId, outputUrl, outputFormat);
+    await updateVideoTranscodedPath(id, outputUrl, format);
 
     res.write('data: 100\n\n');
     res.end();
