@@ -1,7 +1,7 @@
 import { SQSClient, ReceiveMessageCommand, DeleteMessageCommand } from '@aws-sdk/client-sqs';
 import { convertVideo } from '../controllers/videoController.js';
 
-const sqsQueueUrl = "https://sqs.ap-southeast-2.amazonaws.com/901444280953/group50";
+const sqsQueueUrl = "https://sqs.ap-southeast-2.amazonaws.com/901444280953/group50-test";
 const client = new SQSClient({
   region: "ap-southeast-2",
 });
@@ -16,7 +16,6 @@ export async function pollSQS(){
     while(true){
         try{
             const response = await client.send(command);
-            console.log("Receiving a message: ", response);
             // Process body if there are messages in the queue
             if(!response.Messages){
                  // If no messages, wait a bit before polling again
@@ -24,7 +23,8 @@ export async function pollSQS(){
                  const waitTime = 4000;
                  await new Promise(resolve => setTimeout(resolve, waitTime))
             }else {
-                let message = response.Messages[0];                
+                let message = response.Messages[0];    
+                console.log("Receiving a message: ", message); 
                  // Try parsing once
                 let videoDetails = JSON.parse(message.Body);
 

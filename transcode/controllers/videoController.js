@@ -4,10 +4,6 @@ import ffmpeg from 'fluent-ffmpeg';
 import { putObject,  getURLIncline } from '../services/S3.js';
 import { getVideoById, updateVideoTranscodedPath} from '../models/Video.js';
 import https from 'https';
-import { SQSClient } from '@aws-sdk/client-sqs';
-
-const sqsQueueUrl = "https://sqs.ap-southeast-2.amazonaws.com/901444280953/group50";
-const client = new SQSClient({ region: "ap-southeast-2" });
 
 // Function to safely download a file from S3
 function downloadFileFromS3(url, outputPath) {

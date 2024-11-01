@@ -4,9 +4,9 @@ const fs = require('fs');
 const path = require('path');
 
 // Configuration
-const API_BASE_URL = process.argv[2] || "http://3.25.117.203:3001";
-const numberOfRequests = 3; // Adjust the number of requests for load testing
-const videoFilePath = path.resolve(__dirname, 'example1.mp4'); // Replace with your video file path
+const API_BASE_URL = process.argv[2] || "http://localhost:3001";
+const numberOfRequests = 1; // Adjust the number of requests for load testing
+const videoFilePath = path.resolve(__dirname, 'file_example_WMV.wmv'); // Replace with your video file path
 
 async function loadTest() {
   let totalResponseTime = 0;
@@ -20,8 +20,8 @@ async function loadTest() {
       const videoId = uploadResponse._id;
 
       // Wait for the video to be uploaded and start conversion
-      const conversionResponse
-        = await convertVideo(videoId);
+      // const conversionResponse
+      //   = await convertVideo(videoId);
 
       const endTime = Date.now();
       const responseTime = endTime - startTime;
@@ -42,7 +42,7 @@ async function uploadVideo() {
   try {
     const form = new FormData();
     form.append('video', fs.createReadStream(videoFilePath));
-
+    form.append('format','mov');
     const response = await axios.post(`${API_BASE_URL}/videos/upload`, form, {
       headers: form.getHeaders(),
     });
@@ -56,23 +56,23 @@ async function uploadVideo() {
 }
 
 // Function to convert the uploaded video
-async function convertVideo(videoId) {
-  try {
-    const form = new FormData();
-    form.append('videoId', videoId);
-    form.append('format', 'mp4'); // Specify the desired output format
+// async function convertVideo(videoId) {
+//   try {
+//     const form = new FormData();
+//     form.append('videoId', videoId);
+//     form.append('format', 'mp4'); // Specify the desired output format
 
-    const response = await axios.post(`${API_BASE_URL}/videos/convert`, form, {
-      headers: form.getHeaders(),
-    });
+//     const response = await axios.post(`${API_BASE_URL}/videos/convert`, form, {
+//       headers: form.getHeaders(),
+//     });
 
-    console.log('Video conversion initiated:', response.data);
-    return response.data;
-  } catch (error) {
-    console.error('Error converting video:', error.message);
-    throw error;
-  }
-}
+//     console.log('Video conversion initiated:', response.data);
+//     return response.data;
+//   } catch (error) {
+//     console.error('Error converting video:', error.message);
+//     throw error;
+//   }
+// }
 
 // Run the load test
 loadTest();
