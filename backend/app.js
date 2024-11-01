@@ -16,7 +16,7 @@ const app = express();
 app.use(morgan('dev'));
 // Proper CORS Configuration with Proxy Handling
 const corsOptions = {
-  origin: ['http://localhost:3000', 'https://group50.cab432.com'], // Allowed origins
+  origin: ['https://group50.cab432.com', 'http://localhost:3000',], // Allowed origins
   methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS', // Allowed methods
   credentials: true, // Allow sending cookies
   allowedHeaders: 'Content-Type, Authorization', // Allowed headers
