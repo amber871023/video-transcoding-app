@@ -4,8 +4,13 @@ import morgan from 'morgan';
 import cors from 'cors';
 import bodyParser from 'body-parser';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import createError from 'http-errors';
 import { getParameter } from './services/Parameterstore.js';
+
+// Define __filename and __dirname for ES module
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Load environment variables from .env file
 dotenv.config();
@@ -14,9 +19,10 @@ const app = express();
 
 // Middlewares
 app.use(morgan('dev'));
+
 // Proper CORS Configuration with Proxy Handling
 const corsOptions = {
-  origin: ['https://group50.cab432.com', 'http://localhost:3000',], // Allowed origins
+  origin: ['https://group50.cab432.com', 'http://localhost:3000'], // Allowed origins
   methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS', // Allowed methods
   credentials: true, // Allow sending cookies
   allowedHeaders: 'Content-Type, Authorization', // Allowed headers
@@ -30,16 +36,6 @@ app.use(bodyParser.json());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-
-app.options('*', (req, res) => {
-  res.header('Access-Control-Allow-Origin', 'https://group50.cab432.com');
-  res.header('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.sendStatus(204); // Optional, you can also use res.send() if content is needed
-});
-
-
 // Routes
 import userRoutes from './routes/userRoutes.js';
 import videoRoutes from './routes/videoRoutes.js';
@@ -47,9 +43,12 @@ app.use('/api/users', userRoutes);
 app.use('/api/videos', videoRoutes);
 app.use('/api/uploads', express.static(path.join(path.resolve(), 'uploads')));
 app.use('/api/transcoded_videos', express.static(path.join(path.resolve(), 'transcoded_videos')));
+// Serve the frontend build files
+app.use(express.static(path.join(__dirname, 'frontend', 'build')));
 
-app.get('/', (req, res) => {
-  res.send('Hello, world!');
+// Catch-all route to serve index.html for any route that is not explicitly defined
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'frontend', 'build', 'index.html'));
 });
 
 // Start server
@@ -62,6 +61,7 @@ app.get('/', (req, res) => {
     console.error('Failed to start server:', err);
   }
 })();
+
 // Add a /status route to check if the server is running
 app.get('/status', (req, res) => {
   res.status(200).json({ message: 'Server is running' });
