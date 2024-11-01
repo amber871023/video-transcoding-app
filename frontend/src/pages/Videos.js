@@ -17,8 +17,8 @@ const formatDuration = (durationInSeconds) => {
   return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 };
 
-// const baseUrl = "http://localhost:3001";
-const baseUrl = "https://group50.cab432.com/api";
+const baseUrl = "http://localhost:3001";
+//const baseUrl = "http://group50.cab432.com:3001";
 
 const VideoPage = () => {
   const [videos, setVideos] = useState([]);
@@ -38,6 +38,8 @@ const VideoPage = () => {
     try {
       const token = localStorage.getItem('idToken');
       const response = await axios.get(`${baseUrl}/videos/`, {
+        withCredentials: true, // Important for CORS
+      }, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -80,6 +82,7 @@ const VideoPage = () => {
 
       const response = await fetch(`${baseUrl}/videos/reformat/${videoToReformat}`, {
         method: 'POST',
+        credentials: 'include',
         body: formData,
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('idToken')}`,
@@ -87,7 +90,19 @@ const VideoPage = () => {
       });
 
       if (!response.ok) {
-        throw new Error('Network response was not ok');
+        const errorResponse = await response.json();
+        if (errorResponse.message === 'Input format is the same as the output format. Cannot reformat.') {
+          toast({
+            title: 'Reformat Error',
+            description: 'The input and output formats are the same. Please select a different format.',
+            status: 'error',
+            duration: 3000,
+            isClosable: true,
+          });
+          return;
+        } else {
+          throw new Error('Failed to initiate reformatting');
+        }
       }
 
       const reader = response.body.getReader();
@@ -101,7 +116,6 @@ const VideoPage = () => {
         const cleanedChunk = chunk.trim().replace(/^data:\s*/, '');
         const progress = Number(cleanedChunk);
 
-        console.log('Progress received from server:', progress); // Add this log to see the progress
 
         if (!isNaN(progress) && progress > 0) {
           setConversionProgress((prev) => ({ ...prev, [videoToReformat]: progress }));
@@ -110,7 +124,7 @@ const VideoPage = () => {
             toast({
               title: 'Video reformatted successfully.',
               status: 'success',
-              duration: 5000,
+              duration: 3000,
               isClosable: true,
             });
 
@@ -135,7 +149,7 @@ const VideoPage = () => {
           title: 'Connection Error',
           description: 'Failed to reformat the video. Connection is down.',
           status: 'error',
-          duration: 5000,
+          duration: 3000,
           isClosable: true,
         });
 
@@ -144,7 +158,9 @@ const VideoPage = () => {
         const maxAttempts = 5;
         const retryInterval = setInterval(async () => {
           try {
-            const healthResponse = await axios.get(`${baseUrl}/status`, { timeout: 5000 });
+            const healthResponse = await axios.get(`${baseUrl}/status`, { timeout: 5000 }, {
+              withCredentials: true, // Important for CORS
+            });
 
             if (healthResponse.status === 200) {
               clearInterval(retryInterval);
@@ -152,21 +168,21 @@ const VideoPage = () => {
                 title: 'Backend Available',
                 description: 'Backend is available. Retrying reformatting...',
                 status: 'success',
-                duration: 5000,
+                duration: 3000,
                 isClosable: true,
               });
 
               await handleReformat(); // Retry reformatting
             }
           } catch (retryError) {
-            console.log(`Attempt ${attempt} failed, retrying...`);
+            // console.log(`Attempt ${attempt} failed, retrying...`);
             if (attempt >= maxAttempts) {
               clearInterval(retryInterval);
               toast({
                 title: 'Reformatting Failed',
                 description: 'Maximum retry attempts reached. Please try again later.',
                 status: 'error',
-                duration: 5000,
+                duration: 3000,
                 isClosable: true,
               });
             }
@@ -177,13 +193,13 @@ const VideoPage = () => {
     }
   };
 
-
   const handleDownload = async (videoId) => {
     try {
       const downloadUrl = `${baseUrl}/videos/download/${videoId}`;
 
       const response = await fetch(downloadUrl, {
         method: 'GET',
+        credentials: 'include',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('idToken')}`,
         },
@@ -224,7 +240,7 @@ const VideoPage = () => {
         title: 'Download Error',
         description: 'Failed to download the video. Please try again later.',
         status: 'error',
-        duration: 5000,
+        duration: 3000,
         isClosable: true,
       });
     }
@@ -252,6 +268,8 @@ const VideoPage = () => {
   const handleDeleteVideo = async () => {
     try {
       await axios.delete(`${baseUrl}/videos/delete/${videoToDelete}`, {
+        withCredentials: true, // Important for CORS
+      }, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('idToken')}`,
         },
@@ -260,7 +278,7 @@ const VideoPage = () => {
       toast({
         title: 'Video deleted successfully.',
         status: 'success',
-        duration: 5000,
+        duration: 3000,
         isClosable: true,
       });
     } catch (error) {
@@ -268,7 +286,7 @@ const VideoPage = () => {
         title: 'Error deleting video.',
         description: 'Please try again.',
         status: 'error',
-        duration: 5000,
+        duration: 3000,
         isClosable: true,
       });
     } finally {
@@ -477,3 +495,4 @@ const VideoPage = () => {
 };
 
 export default VideoPage;
+

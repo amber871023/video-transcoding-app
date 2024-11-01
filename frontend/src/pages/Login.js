@@ -25,7 +25,7 @@ const LoginPage = () => {
     setIsLoading(true);
     setError('');
     try {
-      const response = await axios.post(`${baseUrl}/users/login`, { email, password }); // Changed to send email
+      const response = await axios.post(`${baseUrl}/users/login`, { email, password }, { withCredentials: true }); // Changed to send email
       const { idToken, username, userGroup } = response.data;
       login({ idToken, username, userGroup });
       toast({

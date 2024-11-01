@@ -70,7 +70,7 @@ const UploadSection = () => {
 
       updateFileStatus(index, 'Uploading');
 
-      const response = await axios.post(`${baseUrl}/videos/upload`, formData, {
+      const response = await axios.post(`${baseUrl}/videos/upload`, formData, { withCredentials: true }, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('idToken')}`,
         },
@@ -107,7 +107,7 @@ const UploadSection = () => {
         const retryInterval = setInterval(async () => {
           try {
             // Check if the backend is available by making a test request
-            await axios.get(`${baseUrl}/status`, { timeout: 3000 });
+            await axios.get(`${baseUrl}/status`, { timeout: 3000 }, { withCredentials: true });
 
             // If backend is back, retry the upload
             clearInterval(retryInterval); // Stop retry attempts
@@ -173,6 +173,7 @@ const UploadSection = () => {
       const response = await fetch(`${baseUrl}/videos/convert`, {
         method: 'POST',
         body: formData,
+        credentials: 'include',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('idToken')}`,
         },
@@ -224,7 +225,9 @@ const UploadSection = () => {
         const maxAttempts = 5;
         const retryInterval = setInterval(async () => {
           try {
-            const healthResponse = await axios.get(`${baseUrl}/status`, { timeout: 5000 });
+            const healthResponse = await axios.get(`${baseUrl}/status`, { timeout: 5000 }, {
+              withCredentials: true, // Important for CORS
+            });
 
             if (healthResponse.status === 200) {
               clearInterval(retryInterval);
@@ -266,6 +269,7 @@ const UploadSection = () => {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('idToken')}`,
         },
+        credentials: 'include',
       });
 
       if (!response.ok) {
@@ -313,6 +317,8 @@ const UploadSection = () => {
     if (videoToDelete && videoToDelete.videoId) {
       try {
         await axios.delete(`${baseUrl}/videos/delete/${videoToDelete.videoId}`, {
+          withCredentials: true, // Important for CORS
+        }, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('idToken')}`,
           },

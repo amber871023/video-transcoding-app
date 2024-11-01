@@ -24,7 +24,9 @@ const Register = () => {
     setIsLoading(true);
     setError('');
     try {
-      const response = await axios.post(`${baseUrl}/users/register`, { email, username, password });
+      const response = await axios.post(`${baseUrl}/users/register`, { email, username, password }, {
+        withCredentials: true, // Important for CORS
+      });
       const { username: registeredUsername } = response.data;
 
       toast({

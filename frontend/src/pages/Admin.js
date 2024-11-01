@@ -15,6 +15,8 @@ const Admin = () => {
     if (!token) return; // Only fetch if token is available
     try {
       const response = await axios.get(`${baseUrl}/users/getlist`, {
+        withCredentials: true, // Important for CORS
+      }, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
