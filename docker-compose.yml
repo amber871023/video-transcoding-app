@@ -18,3 +18,9 @@ services:
       - "3001:3001"
     environment:
       PORT: 3001
+
+  transcode:
+    build:
+      context: ./transcode
+      dockerfile: Dockerfile.transcode
+    image: 901444280953.dkr.ecr.ap-southeast-2.amazonaws.com/n11422807-vitranscoding:transcode
