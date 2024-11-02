@@ -5,7 +5,7 @@ import { getParameter } from '../services/Parameterstore.js';
 
 // S3 configuration
 const bucketName = 'group50';
-const qutUsername = await getParameter('/n11404680/group50/QUT_USERNAME');
+const qutUsername = await getParameter('/n11422807/group50/QUT_USERNAME');
 const purpose = 'assessment-2';
 const s3Client = new S3Client({ region: 'ap-southeast-2' });
 
