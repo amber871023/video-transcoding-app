@@ -18,7 +18,7 @@ const formatDuration = (durationInSeconds) => {
 };
 
 // const baseUrl = "http://localhost:3001";
-const baseUrl = "https://api.group50.cab432.com/api";
+const baseUrl = "https://group50.cab432.com/api";
 
 const VideoPage = () => {
   const [videos, setVideos] = useState([]);
