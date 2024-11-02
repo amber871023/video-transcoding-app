@@ -4,13 +4,8 @@ import morgan from 'morgan';
 import cors from 'cors';
 import bodyParser from 'body-parser';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import createError from 'http-errors';
 import { getParameter } from './services/Parameterstore.js';
-
-// Define __filename and __dirname for ES module
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // Load environment variables from .env file
 dotenv.config();
@@ -43,13 +38,6 @@ app.use('/api/users', userRoutes);
 app.use('/api/videos', videoRoutes);
 app.use('/api/uploads', express.static(path.join(path.resolve(), 'uploads')));
 app.use('/api/transcoded_videos', express.static(path.join(path.resolve(), 'transcoded_videos')));
-// Serve the frontend build files
-app.use(express.static(path.join(__dirname, 'frontend', 'build')));
-
-// Catch-all route to serve index.html for any route that is not explicitly defined
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'frontend', 'build', 'index.html'));
-});
 
 // Start server
 (async () => {

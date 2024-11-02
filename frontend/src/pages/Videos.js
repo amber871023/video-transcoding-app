@@ -17,8 +17,8 @@ const formatDuration = (durationInSeconds) => {
   return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 };
 
-const baseUrl = "http://localhost:3001";
-//const baseUrl = "http://group50.cab432.com:3001";
+// const baseUrl = "http://localhost:3001";
+const baseUrl = "https://api.group50.cab432.com/api";
 
 const VideoPage = () => {
   const [videos, setVideos] = useState([]);
