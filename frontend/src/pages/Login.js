@@ -9,7 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 // const baseUrl = 'http://localhost:3001';
-const baseUrl = "http://group50.cab432.com:3001";
+const baseUrl = "https://api.group50.cab432.com/api";
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
