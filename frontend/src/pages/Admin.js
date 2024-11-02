@@ -3,8 +3,8 @@ import { Box, Container, Text, VStack, IconButton, useToast, Button } from '@cha
 import axios from 'axios';
 import { FaTrash } from 'react-icons/fa';
 
-const baseUrl = "http://group50.cab432.com:3001";
-// const baseUrl = 'http://localhost:3001';
+// const baseUrl = "http://localhost:3001/api";
+const baseUrl = "https://group50.cab432.com/api";
 
 const Admin = () => {
   const [users, setUsers] = useState([]);
