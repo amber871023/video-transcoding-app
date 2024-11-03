@@ -107,7 +107,7 @@ export const uploadVideo = async (req, res) => {
     //notifyConversion(videoURL,videoId,convertFormat)
 
     // Invoke LAMBDA function to send message to SQS
-    const payload = { videoURL, videoId, convertFormat }
+    // const payload = { videoURL, videoId, convertFormat }
 
     // const command = new InvokeCommand({
     //   FunctionName:'group50-conversion',
@@ -349,9 +349,9 @@ export const deleteVideo = async (req, res) => {
     const videoId = req.params.id;
 
     const video = await getVideoById(videoId);
-    if (!video) {
-      return res.status(404).json({ message: 'Video not found' });
-    }
+    // if (!video) {
+    //   return res.status(404).json({ message: 'Video not found' });
+    // }
 
     const format = video.format
     const transcodedFormat = video.transcodedFormat
