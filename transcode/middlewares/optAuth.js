@@ -17,7 +17,7 @@ export const optAuth = async (req, res, next) => {
       // Attach user information to the request if token is valid
       req.user = { id: userId, email: email, username: username };
     } catch (err) {
-      console.log("Token is not valid:", err.message);
+      console.log("User not logged in");
     }
   }
   // Proceed without error even if the token is invalid or missing

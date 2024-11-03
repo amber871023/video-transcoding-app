@@ -15,11 +15,18 @@ const app = express();
 
 // Middlewares
 app.use(morgan('dev'));
-app.use(cors({
-  origin: 'http://localhost:3000', // Replace with your frontend URL
-  //origin: 'http://group50-test.cab432.com:3000',
-  credentials: true,
-}));
+// Proper CORS Configuration with Proxy Handling
+const corsOptions = {
+  origin: ['https://group50.cab432.com', 'http://localhost:3000'], // Allowed origins
+  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS', // Allowed methods
+  credentials: true, // Allow sending cookies
+  allowedHeaders: 'Content-Type, Authorization', // Allowed headers
+  exposedHeaders: 'Content-Length, X-Requested-With', // Optionally expose headers
+};
+
+// Handle Preflight (OPTIONS) Requests for CORS
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // Allow OPTIONS for all routes
 app.use(bodyParser.json());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
