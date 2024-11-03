@@ -40,16 +40,26 @@ export async function tagBucket() {
 }
 
 // Upload an object to S3 using the Upload class
-export async function putObject(key, body) {
+export async function putObject(key, body, conversionType = null) {
     try {
+        const params = {
+            Bucket: bucketName,
+            Key: key,
+            Body: body,
+            Metadata: {}, // Initialize metadata object
+        };
+
+        // Optionally add conversion type to metadata if provided
+        if (conversionType) {
+            params.Metadata["convert-format"] = conversionType; // Use the correct key assignment
+        }
+
+        // Create the upload instance with the correct parameters
         const upload = new Upload({
             client: s3Client,
-            params: {
-                Bucket: bucketName,
-                Key: key,
-                Body: body,
-            },
+            params: params, // Pass the params with metadata included
         });
+
         upload.on('httpUploadProgress', (progress) => {
             console.log(`Uploaded ${progress.loaded} of ${progress.total} bytes`);
         });

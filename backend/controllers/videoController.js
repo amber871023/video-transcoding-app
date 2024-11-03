@@ -5,7 +5,12 @@ import { putObject, getObject, getURLIncline, deleteObject } from '../services/S
 import { createVideo, getVideoById, getVideosByUserId, updateVideoTranscodedPath, deleteVideoRecord } from '../models/Video.js';
 import { v4 as uuidv4 } from 'uuid';
 import https from 'https';
-import { notifyConversion } from '../services/SQS.js';
+//import { LambdaClient, InvokeCommand } from '@aws-sdk/client-lambda';
+//import { notifyConversion } from '../services/SQS.js';
+
+// const lambdaClient = new LambdaClient({
+//   region:"ap-southeast-2"
+// })
 
 export const uploadVideo = async (req, res) => {
   const tempFiles = []; // Track temporary files for cleanup
@@ -20,10 +25,11 @@ export const uploadVideo = async (req, res) => {
     const videoId = uuidv4();
     let format = path.extname(req.file.originalname).substring(1);
     videoKey = `uploads/${videoId}.${format}`;
+    const outputFormat = req.body.format.toLowerCase();
 
     // Attempt to upload video directly to S3
     try {
-      await putObject(videoKey, videoBuffer);
+      await putObject(videoKey, videoBuffer,outputFormat);
     } catch (uploadError) {
       console.error('Error uploading video to S3:', uploadError.message);
       return res.status(500).json({ message: 'Failed to upload video to S3.', error: uploadError.message });
@@ -98,7 +104,22 @@ export const uploadVideo = async (req, res) => {
       return res.status(500).json({ message: 'Failed to save video metadata.', error: dbError.message });
     }
     
-    notifyConversion(videoURL,videoId,convertFormat)
+    //notifyConversion(videoURL,videoId,convertFormat)
+
+    // Invoke LAMBDA function to send message to SQS
+    const payload = { videoURL, videoId, convertFormat }
+
+    // const command = new InvokeCommand({
+    //   FunctionName:'group50-conversion',
+    //   Payload: JSON.stringify(payload),
+    // }); 
+    // try{
+    //   const response = await lambdaClient.send(command);
+    //   console.log("Lambda function invoked: ", response);
+    // }catch(err){
+    //   console.err("Error invoking Lambda function ", err);
+    // }
+
 
     // Cleanup temporary files
     fs.unlinkSync(thumbnailPath);
@@ -481,7 +502,7 @@ export const reformatVideo = async (req, res) => {
     });
 
     const fileStream = fs.createReadStream(tempOutputPath);
-    await putObject(outputKey, fileStream);
+    await putObject(outputKey, fileStream,outputFormat);
     await updateVideoTranscodedPath(videoId, outputUrl, outputFormat);
 
     // Send final 100% progress

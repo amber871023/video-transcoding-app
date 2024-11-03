@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Configuration
-const API_BASE_URL = process.argv[2] || "http://localhost:3001";
+const API_BASE_URL = process.argv[2] || "http://13.238.201.217:3001/api";
 const numberOfRequests = 1; // Adjust the number of requests for load testing
 const videoFilePath = path.resolve(__dirname, 'file_example_WMV.wmv'); // Replace with your video file path
 

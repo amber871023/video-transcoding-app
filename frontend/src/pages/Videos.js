@@ -37,7 +37,7 @@ const VideoPage = () => {
   const fetchVideos = async () => {
     try {
       const token = localStorage.getItem('idToken');
-      const response = await axios.get(`${baseUrl}/videos/`, {
+      const response = await axios.get(`${baseUrl}/videos`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },

@@ -39,11 +39,11 @@ export async function convertVideo(url, id, format) {
     //   return res.status(400).json({ message: 'No video ID provided.' });
     // }
 
-    const video = await getVideoById(id);
-    if (!video) {
-      console.error("Video not found");
-      // return res.status(404).json({ message: 'Video not found.' });
-    }
+    // const video = await getVideoById(id);
+    // if (!video) {
+    //   console.error("Video not found");
+    //   // return res.status(404).json({ message: 'Video not found.' });
+    // }
 
     // const videoURL = video.originalVideoPath;
     const originalExtension = path.extname(new URL(url).pathname);

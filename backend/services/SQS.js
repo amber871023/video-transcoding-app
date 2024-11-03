@@ -1,6 +1,6 @@
 import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
 
-const sqsQueueUrl = "https://sqs.ap-southeast-2.amazonaws.com/901444280953/group50-test4";
+const sqsQueueUrl = "https://sqs.ap-southeast-2.amazonaws.com/901444280953/group50";
 const client = new SQSClient({
   region: "ap-southeast-2",
 });

@@ -1,7 +1,7 @@
 import { SQSClient, ReceiveMessageCommand, DeleteMessageCommand } from '@aws-sdk/client-sqs';
 import { convertVideo } from '../controllers/videoController.js';
-
-const sqsQueueUrl = "https://sqs.ap-southeast-2.amazonaws.com/901444280953/group50-test";
+import { getURLIncline } from '../services/S3.js';
+const sqsQueueUrl = "https://sqs.ap-southeast-2.amazonaws.com/901444280953/group50";
 const client = new SQSClient({
   region: "ap-southeast-2",
 });
@@ -32,12 +32,15 @@ export async function pollSQS(){
                 if (typeof videoDetails === "string") {
                      videoDetails = JSON.parse(videoDetails);
                 }
-
+                console.log("videoDetails:", videoDetails);
                 // retrieve data from the body 
                 const url = videoDetails.videoUrl
-                const id = videoDetails.videoId
-                const format= videoDetails.covertFormat
-                await convertVideo(url, id, format);
+                const key = url.split('.com/')[1];
+                const presignedUrl = await getURLIncline(key);
+                const id = videoDetails.videoId;
+                const format= videoDetails.convertFormat;
+                console.log("Format:", format);
+                await convertVideo(presignedUrl, id, format);
                 
                 // Delete the message from the queue after conversion
                 const deleteCommand = new DeleteMessageCommand({

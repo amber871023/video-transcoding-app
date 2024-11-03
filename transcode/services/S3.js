@@ -50,6 +50,7 @@ export async function putObject(key, body) {
                 Body: body,
             },
         });
+
         upload.on('httpUploadProgress', (progress) => {
             console.log(`Uploaded ${progress.loaded} of ${progress.total} bytes`);
         });
