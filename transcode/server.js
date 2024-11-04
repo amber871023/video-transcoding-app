@@ -33,9 +33,9 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Routes
-import userRoutes from './routes/userRoutes.js';
+//import userRoutes from './routes/userRoutes.js';
 import videoRoutes from './routes/videoRoutes.js';
-app.use('/api/users', userRoutes);
+//app.use('/api/users', userRoutes);
 app.use('/api/videos', videoRoutes);
 app.use('/api/uploads', express.static(path.join(path.resolve(), 'uploads')));
 app.use('/api/transcoded_videos', express.static(path.join(path.resolve(), 'transcoded_videos')));
