@@ -32,18 +32,14 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Routes
-//import userRoutes from './routes/userRoutes.js';
-import videoRoutes from './routes/videoRoutes.js';
-//app.use('/api/users', userRoutes);
-app.use('/api/videos', videoRoutes);
-app.use('/api/uploads', express.static(path.join(path.resolve(), 'uploads')));
-app.use('/api/transcoded_videos', express.static(path.join(path.resolve(), 'transcoded_videos')));
+import userRoutes from './routes/userRoutes.js';
+app.use('/api/users', userRoutes);
 
 // Start server
 (async () => {
   try {
-    const PORT = await getParameter('/n11404680/group50/PORT') || 3001;
-    app.listen(PORT, '0.0.0.0', () => console.log(`Server running on port ${PORT}`));
+    const PORT = await getParameter('/n11404680/group50/PORT') || 4000;
+    app.listen(4000, '0.0.0.0', () => console.log(`Server running on port 4000`));
     app.timeout = 1200000; // Increase server timeout to 20 minutes
   } catch (err) {
     console.error('Failed to start server:', err);
