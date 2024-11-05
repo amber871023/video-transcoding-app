@@ -1,12 +1,14 @@
+// Common exclusions
 node_modules
 npm - debug.log
 Dockerfile
   .dockerignore
-frontend / node_modules
+uploads
+mongodata /
+
+  //Exclude node_modules and environment files from specific folders
+  frontend / node_modules
 frontend /.env
 backend / node_modules
 backend /.env
 test / node_modules
-uploads
-mongodata /
-

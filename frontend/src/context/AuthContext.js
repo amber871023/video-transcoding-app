@@ -1,4 +1,5 @@
-import React, { createContext, useState, useContext } from 'react';
+import React, { createContext, useState, useContext, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const AuthContext = createContext();
 
@@ -6,25 +7,47 @@ const AuthContext = createContext();
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
-  const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('token'));
-  const [username, setUsername] = useState(() => localStorage.getItem('username') || '');
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [username, setUsername] = useState('');
+  const [userGroup, setUserGroup] = useState('');
+  const navigate = useNavigate();
+
+  // Initialize state from localStorage when the component mounts
+  useEffect(() => {
+    const storedToken = localStorage.getItem('idToken');
+    const storedUsername = localStorage.getItem('username');
+    const storedUserGroup = localStorage.getItem('userGroup');
+
+    if (storedToken && storedUsername && storedUserGroup) {
+      setIsLoggedIn(true);
+      setUsername(storedUsername);
+      setUserGroup(storedUserGroup);
+    }
+  }, []);
 
   const login = (userData) => {
     setIsLoggedIn(true);
     setUsername(userData.username);
-    localStorage.setItem('token', userData.token);
+    setUserGroup(userData.userGroup);
+    localStorage.setItem('idToken', userData.idToken);
     localStorage.setItem('username', userData.username);
+    localStorage.setItem('userGroup', userData.userGroup);
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
+    localStorage.removeItem('idToken');
     localStorage.removeItem('username');
+    localStorage.removeItem('userGroup');
     setIsLoggedIn(false);
     setUsername('');
+    navigate('/');
   };
 
+  // const role =() =>{
+  //   localStorage.setItem()
+  // }
   return (
-    <AuthContext.Provider value={{ isLoggedIn, username, login, logout }}>
+    <AuthContext.Provider value={{ isLoggedIn, username, login, logout, userGroup }}>
       {children}
     </AuthContext.Provider>
   );

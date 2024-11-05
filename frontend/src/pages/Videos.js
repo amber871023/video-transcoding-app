@@ -9,6 +9,7 @@ import { FaHome, FaExchangeAlt, FaDownload, FaTrash } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import CustomButton from '../components/CustomButton';
 import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
 
 const formatDuration = (durationInSeconds) => {
   const minutes = Math.floor(durationInSeconds / 60);
@@ -16,8 +17,8 @@ const formatDuration = (durationInSeconds) => {
   return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 };
 
-const baseUrl = "http://localhost:3001";
-// const baseUrl = "http://3.25.117.203:3001";
+// const baseUrl = "http://localhost:3001";
+const baseUrl = "https://group50.cab432.com/api";
 
 const VideoPage = () => {
   const [videos, setVideos] = useState([]);
@@ -26,25 +27,27 @@ const VideoPage = () => {
   const [videoToDelete, setVideoToDelete] = useState(null);
   const [isReformatOpen, setIsReformatOpen] = useState(false);
   const [format, setFormat] = useState('MP4');
-  const [videoToReformat, setVideoToReformat] = useState(null);
+  const [videoToReformat, setVideoToReformat] = useState(undefined);
   const [conversionProgress, setConversionProgress] = useState({});
   const cancelRef = React.useRef();
   const toast = useToast();
   const navigate = useNavigate();
+  const { isLoggedIn } = useAuth();
 
   const fetchVideos = async () => {
     try {
+      const token = localStorage.getItem('idToken');
       const response = await axios.get(`${baseUrl}/videos/`, {
+        withCredentials: true, // Important for CORS
+      }, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${token}`,
         },
       });
-      const videosWithUrls = response.data.map(video => {
-        return {
-          ...video,
-          videoUrl: video.originalVideoPath,
-        };
-      });
+      const videosWithUrls = response.data.map(video => ({
+        ...video,
+        videoUrl: video.originalVideoPath,
+      }));
       setVideos(videosWithUrls);
     } catch (error) {
       toast({
@@ -56,33 +59,52 @@ const VideoPage = () => {
       });
     }
   };
+
+  // Automatically fetch videos when logged in or on page reload
   useEffect(() => {
-    fetchVideos();
-  }, [toast]);
+    if (isLoggedIn) {
+      fetchVideos();
+    }
+  }, [isLoggedIn]);
 
   const handleReformat = async () => {
     if (!videoToReformat) {
+      console.error('Cannot reformat without a video ID.');
       return;
     }
 
     setConversionProgress((prev) => ({ ...prev, [videoToReformat]: 0 }));
 
     try {
+      const formData = new FormData();
+      formData.append('videoId', videoToReformat);
+      formData.append('format', format.toLowerCase());
+
       const response = await fetch(`${baseUrl}/videos/reformat/${videoToReformat}`, {
         method: 'POST',
+        credentials: 'include',
+        body: formData,
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('idToken')}`,
         },
-        body: JSON.stringify({ format: format.toLowerCase() }),
       });
 
-      // Check if the response is not ok
       if (!response.ok) {
-        throw new Error('Failed to initiate reformatting');
+        const errorResponse = await response.json();
+        if (errorResponse.message === 'Input format is the same as the output format. Cannot reformat.') {
+          toast({
+            title: 'Reformat Error',
+            description: 'The input and output formats are the same. Please select a different format.',
+            status: 'error',
+            duration: 3000,
+            isClosable: true,
+          });
+          return;
+        } else {
+          throw new Error('Failed to initiate reformatting');
+        }
       }
 
-      // Start reading the progress updates from the response body
       const reader = response.body.getReader();
       const decoder = new TextDecoder('utf-8');
       let done = false;
@@ -91,43 +113,85 @@ const VideoPage = () => {
         const { value, done: readerDone } = await reader.read();
         done = readerDone;
         const chunk = decoder.decode(value, { stream: true });
-
-        // Strip the 'data: ' prefix if it exists
         const cleanedChunk = chunk.trim().replace(/^data:\s*/, '');
-
         const progress = Number(cleanedChunk);
 
-        if (!isNaN(progress)) {
-          // Update the progress state
+
+        if (!isNaN(progress) && progress > 0) {
           setConversionProgress((prev) => ({ ...prev, [videoToReformat]: progress }));
 
-          // Check if the conversion is completed
           if (progress >= 100) {
-            // Update the status and close the modal
             toast({
               title: 'Video reformatted successfully.',
               status: 'success',
-              duration: 5000,
+              duration: 3000,
               isClosable: true,
             });
-            closeReformatDialog();
 
-            // Refresh the video list after successful reformatting
-            await fetchVideos();
+            // Reset the state after successful conversion
+            setConversionProgress((prev) => ({ ...prev, [videoToReformat]: undefined }));
+            closeReformatDialog();
+            await fetchVideos(); // Refresh the video list
           }
         }
       }
+
     } catch (error) {
-      toast({
-        title: 'Error reformatting video.',
-        description: 'Please try again.',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
+      console.error('Error during reformat:', error.message);
+
+      // Retry logic: Exponential Backoff
+      if (
+        error.message.includes('network error') ||
+        error.message.includes('ERR_CONNECTION_REFUSED') ||
+        error.message.includes('ERR_INCOMPLETE_CHUNKED_ENCODING')
+      ) {
+        toast({
+          title: 'Connection Error',
+          description: 'Failed to reformat the video. Connection is down.',
+          status: 'error',
+          duration: 3000,
+          isClosable: true,
+        });
+
+        // Retry logic using exponential backoff
+        let attempt = 1;
+        const maxAttempts = 5;
+        const retryInterval = setInterval(async () => {
+          try {
+            const healthResponse = await axios.get(`${baseUrl}/status`, { timeout: 5000 }, {
+              withCredentials: true, // Important for CORS
+            });
+
+            if (healthResponse.status === 200) {
+              clearInterval(retryInterval);
+              toast({
+                title: 'Backend Available',
+                description: 'Backend is available. Retrying reformatting...',
+                status: 'success',
+                duration: 3000,
+                isClosable: true,
+              });
+
+              await handleReformat(); // Retry reformatting
+            }
+          } catch (retryError) {
+            // console.log(`Attempt ${attempt} failed, retrying...`);
+            if (attempt >= maxAttempts) {
+              clearInterval(retryInterval);
+              toast({
+                title: 'Reformatting Failed',
+                description: 'Maximum retry attempts reached. Please try again later.',
+                status: 'error',
+                duration: 3000,
+                isClosable: true,
+              });
+            }
+            attempt++;
+          }
+        }, Math.min(attempt * 2000, 10000)); // Exponential backoff with max 10 seconds delay
+      }
     }
   };
-
 
   const handleDownload = async (videoId) => {
     try {
@@ -135,8 +199,9 @@ const VideoPage = () => {
 
       const response = await fetch(downloadUrl, {
         method: 'GET',
+        credentials: 'include',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('idToken')}`,
         },
       });
 
@@ -144,36 +209,45 @@ const VideoPage = () => {
         throw new Error(`Failed to download the video. Status: ${response.status}`);
       }
 
+      // Extract filename from the Content-Disposition header, if available
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = 'downloaded_video'; // Default filename
+
+      if (contentDisposition) {
+        // Extract filename from the header using regex
+        const match = contentDisposition.match(/filename="(.+)"/);
+        if (match && match[1]) {
+          filename = match[1];
+        }
+      }
+
       // Convert the response to a Blob object
       const blob = await response.blob();
-
       const downloadLink = URL.createObjectURL(blob);
 
+      // Create a temporary link element for download
       const link = document.createElement('a');
       link.href = downloadLink;
-      link.setAttribute('download', 'downloaded_video.mp4');
+      link.setAttribute('download', filename); // Use the extracted or default filename
       document.body.appendChild(link);
       link.click();
 
-
+      // Clean up the temporary link and revoke the object URL
       document.body.removeChild(link);
       URL.revokeObjectURL(downloadLink);
     } catch (error) {
-      console.error('Download failed:', error);
       toast({
         title: 'Download Error',
         description: 'Failed to download the video. Please try again later.',
         status: 'error',
-        duration: 5000,
+        duration: 3000,
         isClosable: true,
       });
     }
   };
 
-
   const handlePlayVideo = (videoId) => {
     const video = videos.find(v => v.videoId === videoId);
-    console.log(video)
     if (video && video.videoUrl) {
       setPlayingVideoId(videoId);
     } else {
@@ -188,21 +262,23 @@ const VideoPage = () => {
 
   const closeDeleteDialog = () => {
     setIsDeleteOpen(false);
-    setVideoToDelete(null);
+    setVideoToDelete(undefined);
   };
 
   const handleDeleteVideo = async () => {
     try {
       await axios.delete(`${baseUrl}/videos/delete/${videoToDelete}`, {
+        withCredentials: true, // Important for CORS
+      }, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('idToken')}`,
         },
       });
       setVideos(videos.filter(video => video.videoId !== videoToDelete));
       toast({
         title: 'Video deleted successfully.',
         status: 'success',
-        duration: 5000,
+        duration: 3000,
         isClosable: true,
       });
     } catch (error) {
@@ -210,7 +286,7 @@ const VideoPage = () => {
         title: 'Error deleting video.',
         description: 'Please try again.',
         status: 'error',
-        duration: 5000,
+        duration: 3000,
         isClosable: true,
       });
     } finally {
@@ -225,7 +301,7 @@ const VideoPage = () => {
 
   const closeReformatDialog = () => {
     setIsReformatOpen(false);
-    setVideoToReformat(null);
+    setVideoToReformat(undefined);
     setFormat('MP4');
   };
 
@@ -379,13 +455,12 @@ const VideoPage = () => {
             <Text>Select the format you want to convert the video to:</Text>
             <Select mt={4} value={format} onChange={(e) => setFormat(e.target.value)}>
               <option value="MP4">MP4</option>
+              <option value="WEBM">WEBM</option>
               <option value="FLV">FLV</option>
               <option value="MOV">MOV</option>
-              {/* <option value="MKV">MKV</option> */}
               <option value="AVI">AVI</option>
-              <option value="WEBM">WEBM</option>
               {/* <option value="WMV">WMV</option> */}
-              <option value="VOB">VOB</option>
+              <option value="MPEG">MPEG</option>
             </Select>
           </ModalBody>
           <ModalFooter>
@@ -420,3 +495,4 @@ const VideoPage = () => {
 };
 
 export default VideoPage;
+

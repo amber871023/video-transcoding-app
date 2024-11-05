@@ -1,17 +1,19 @@
-const DynamoDB = require('@aws-sdk/client-dynamodb');
-const DynamoDBLib = require('@aws-sdk/lib-dynamodb');
-const { v4: uuidv4 } = require('uuid'); // Import the UUID package
-const { signUp } = require('../services/Cognito');
+import pkg from '@aws-sdk/client-dynamodb';
+const { DynamoDBClient } = pkg;
+import DynamoDBLib from '@aws-sdk/lib-dynamodb';
 
-const qutUsername = process.env.QUT_USERNAME;
+import { getParameter } from '../services/Parameterstore.js';
+
+// Initialize DynamoDB client
+const client = new DynamoDBClient({ region: 'ap-southeast-2' });
 const userTableName = "n11422807-users";
 
-const client = new DynamoDB.DynamoDBClient({ region: 'ap-southeast-2' });
-const docClient = DynamoDBLib.DynamoDBDocumentClient.from(client);
+// Retrieve environment variables from AWS Parameter Store
+const qutUsername = await getParameter('/n11422807/group50/QUT_USERNAME');
+// const qutUsername = process.env.QUT_USERNAME;
 
-// Create User Function
-async function createUser({ email, username, passwordHash ,userId}) {
-
+// Function to create a user
+export async function createUser({ email, username, passwordHash, userId }) {
   const command = new DynamoDBLib.PutCommand({
     TableName: userTableName,
     Item: {
@@ -20,25 +22,21 @@ async function createUser({ email, username, passwordHash ,userId}) {
       username,
       passwordHash,
       email,
-      createdAt: new Date().toISOString()
-    }
+      createdAt: new Date().toISOString(),
+    },
   });
 
   try {
-    response = signUp(username, password, email);
-
-    await docClient.send(command);
-    console.log('User creatd in DynamoDB: ', response);
+    await client.send(command);
+    return { userId, username, email }; // Return the new user data
   } catch (err) {
     console.error('Error creating user:', err);
     throw err;
   }
-
-
 }
 
 // Function to get a user by email
-async function getUserByEmail(email) {
+export async function getUserByEmail(email) {
   const command = new DynamoDBLib.QueryCommand({
     TableName: userTableName,
     KeyConditionExpression: '#pk = :username',
@@ -46,14 +44,14 @@ async function getUserByEmail(email) {
       '#pk': 'qut-username'
     },
     ExpressionAttributeValues: {
-      ':username': process.env.QUT_USERNAME,
+      ':username': qutUsername,
       ':email': email
     },
     FilterExpression: 'email = :email',
   });
 
   try {
-    const response = await docClient.send(command);
+    const response = await client.send(command);
     return response.Items[0];
   } catch (err) {
     console.error('Error retrieving user:', err);
@@ -61,4 +59,22 @@ async function getUserByEmail(email) {
   }
 }
 
-module.exports = { createUser, getUserByEmail };
+
+export async function deleteUser(userId) {
+  const command = new DynamoDBLib.DeleteCommand({
+    TableName: userTableName,
+    Key: {
+      'qut-username': qutUsername,
+      userId: userId,
+    },
+  });
+
+  try {
+    const response = await client.send(command);
+    console.log('DynamoDB user deleted successfully:', response);
+    return response;
+  } catch (err) {
+    console.error('Error deleting user:', err);
+    throw err;
+  }
+}

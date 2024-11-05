@@ -3,15 +3,16 @@ import {
   Box, Button, Input, FormControl, FormErrorMessage, VStack, Heading, InputGroup, InputLeftElement, InputRightElement, IconButton, useToast,
 } from '@chakra-ui/react';
 import { ViewIcon, ViewOffIcon } from '@chakra-ui/icons';
-import { FaEnvelope, FaLock } from 'react-icons/fa'; // Updated icon for email
+import { FaEnvelope, FaLock } from 'react-icons/fa';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-const baseUrl = 'http://localhost:3001';
+// const baseUrl = 'http://localhost:3001/api';
+const baseUrl = "https://group50.cab432.com/api";
 
 const LoginPage = () => {
-  const [email, setEmail] = useState(''); // Changed from username to email
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
@@ -24,19 +25,23 @@ const LoginPage = () => {
     setIsLoading(true);
     setError('');
     try {
-      const response = await axios.post(`${baseUrl}/users/login`, { email, password }); // Changed to send email
-      const { token, username } = response.data;
-      login({ token, username });
+      const response = await axios.post(`${baseUrl}/users/login`, { email, password }, { withCredentials: true }); // Changed to send email
+      const { idToken, username, userGroup } = response.data;
+      login({ idToken, username, userGroup });
       toast({
         title: 'Login successful.',
         status: 'success',
-        duration: 5000,
+        duration: 3000,
         isClosable: true,
       });
       setEmail('');
       setPassword('');
-      navigate('/');
-    } catch (error) {
+      if (userGroup === 'admin') {
+        navigate('/users'); // Redirect to admin page
+      } else {
+        navigate('/'); // Redirect to home page for regular users
+      }
+    } catch {
       setError('Invalid email or password.');
       toast({
         title: 'Login failed.',
@@ -76,7 +81,7 @@ const LoginPage = () => {
           <FormControl isInvalid={!!error}>
             <InputGroup>
               <InputLeftElement pointerEvents='none'>
-                <FaEnvelope color='gray.300' /> {/* Email icon */}
+                <FaEnvelope color='gray.300' />
               </InputLeftElement>
               <Input
                 type="email"

@@ -6,9 +6,9 @@ import { FaUser, FaLock, FaEnvelope } from 'react-icons/fa';
 import { ViewIcon, ViewOffIcon } from '@chakra-ui/icons';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
 
-const baseUrl = "http://localhost:3001"; // Update with your server's base URL
+// const baseUrl = "http://localhost:3001/api"; // Update with your server's base URL
+const baseUrl = "https://group50.cab432.com/api";
 
 const Register = () => {
   const [email, setEmail] = useState('');
@@ -19,15 +19,15 @@ const Register = () => {
   const [isLoading, setIsLoading] = useState(false);
   const toast = useToast();
   const navigate = useNavigate();
-  const { login } = useAuth();
 
   const handleSubmit = async () => {
     setIsLoading(true);
     setError('');
     try {
-      const response = await axios.post(`${baseUrl}/users/register`, { email, username, password });
-      const { token, username: registeredUsername } = response.data;
-      login({ token, username: registeredUsername });
+      const response = await axios.post(`${baseUrl}/users/register`, { email, username, password }, {
+        withCredentials: true, // Important for CORS
+      });
+      const { username: registeredUsername } = response.data;
 
       toast({
         title: 'Registration successful.',
@@ -38,7 +38,7 @@ const Register = () => {
       setEmail('');
       setUsername('');
       setPassword('');
-      navigate('/');
+      navigate('/login');
     } catch (error) {
       setError('Failed to register.');
       toast({
@@ -80,7 +80,7 @@ const Register = () => {
           <FormControl isInvalid={!!error}>
             <InputGroup>
               <InputLeftElement pointerEvents="none">
-                <FaEnvelope color="gray.300" /> {/* Email icon */}
+                <FaEnvelope color="gray.300" />
               </InputLeftElement>
               <Input
                 type="email"
@@ -92,7 +92,7 @@ const Register = () => {
             </InputGroup>
             <InputGroup mt={4}>
               <InputLeftElement pointerEvents="none">
-                <FaUser color="gray.300" /> {/* User icon */}
+                <FaUser color="gray.300" />
               </InputLeftElement>
               <Input
                 type="text"
@@ -104,7 +104,7 @@ const Register = () => {
             </InputGroup>
             <InputGroup mt={4}>
               <InputLeftElement pointerEvents="none">
-                <FaLock color="gray.300" /> {/* Lock icon */}
+                <FaLock color="gray.300" />
               </InputLeftElement>
               <Input
                 type={showPassword ? 'text' : 'password'}

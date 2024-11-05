@@ -1,6 +1,7 @@
 {
   "name": "backend",
   "version": "1.0.0",
+  "type": "module",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -12,9 +13,12 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@aws-sdk/client-cognito-identity-provider": "^3.658.0",
+    "@aws-sdk/client-cognito-identity-provider": "^3.658.1",
     "@aws-sdk/client-dynamodb": "^3.656.0",
+    "@aws-sdk/client-iam": "^3.658.1",
     "@aws-sdk/client-s3": "^3.654.0",
+    "@aws-sdk/client-secrets-manager": "^3.658.1",
+    "@aws-sdk/client-ssm": "^3.658.1",
     "@aws-sdk/lib-dynamodb": "^3.656.0",
     "@aws-sdk/lib-storage": "^3.657.0",
     "@aws-sdk/s3-request-presigner": "^3.657.0",

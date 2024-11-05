@@ -1,19 +1,20 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Box, VStack, Text, Select, Stack, HStack, Image, Progress, IconButton, Tag, TagLabel, CircularProgress, CircularProgressLabel, Alert, AlertIcon, Button } from '@chakra-ui/react';
+import { Box, VStack, Text, Select, Stack, HStack, Image, Progress, IconButton, Tag, TagLabel, CircularProgress, CircularProgressLabel, Alert, AlertIcon, Button, useToast } from '@chakra-ui/react';
 import { FaFileUpload, FaExchangeAlt, FaTrashAlt, FaDownload, FaFileVideo, FaFileMedical } from 'react-icons/fa';
 import CustomButton from './CustomButton';
 import axios from 'axios';
 
-const baseUrl = "http://localhost:3001";
-// const baseUrl = "http://3.25.117.203:3001";
+// const baseUrl = "http://localhost:3001";
+const baseUrl = "https://group50.cab432.com/api";
 
 const UploadSection = () => {
   const [videoFiles, setVideoFiles] = useState([]);
   const [conversionStarted, setConversionStarted] = useState(false);
   const [errorMessages, setErrorMessages] = useState([]);
+  const toast = useToast(); // Initialize Chakra's toast hook
 
-  const allowedFormats = ['MP4', 'MKV', 'WMV', 'AVI', 'MOV', 'VOB']; // Define allowed formats
+  const allowedFormats = ['MP4', 'MPEG', 'WMV', 'AVI', 'MOV', 'WEBM']; // Define allowed formats
 
   useEffect(() => {
     if (videoFiles.length === 0) {
@@ -51,15 +52,27 @@ const UploadSection = () => {
   }, []);
 
   const handleUpload = async (file, index) => {
+    // Check if the selected format is the same as the original format
+    if (file.originalFormat.toLowerCase() === file.format.toLowerCase()) {
+      toast({
+        title: 'Conversion Error',
+        description: 'The selected format is the same as the original format. Please choose a different format.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+      updateFileStatus(index, 'Failed');
+      return; // Stop further processing
+    }
     try {
       const formData = new FormData();
       formData.append('video', file.file);
 
       updateFileStatus(index, 'Uploading');
 
-      const response = await axios.post(`${baseUrl}/videos/upload`, formData, {
+      const response = await axios.post(`${baseUrl}/videos/upload`, formData, { withCredentials: true }, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('idToken')}`,
         },
         onUploadProgress: (progressEvent) => {
           const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
@@ -67,9 +80,9 @@ const UploadSection = () => {
         },
       });
 
-      // Correctly set the videoId property
+      // Update file data with response from the server
       updateFileData(index, {
-        videoId: response.data.videoId, // Ensure this matches what is expected later
+        videoId: response.data.videoId,
         thumbnailPath: response.data.thumbnailPath,
         size: response.data.size,
         duration: response.data.duration,
@@ -77,19 +90,46 @@ const UploadSection = () => {
       });
 
       updateFileStatus(index, 'Uploaded');
-
-      await handleConvert({ ...file, videoId: response.data.videoId }, index); // Pass the correct videoId
-
+      await handleConvert({ ...file, videoId: response.data.videoId }, index);
     } catch (error) {
-      console.error('Error uploading file:', error);
       updateFileStatus(index, 'Failed');
+
+      if (error.message.includes('Network Error') || error.message.includes('ERR_CONNECTION_REFUSED')) {
+        toast({
+          title: 'Connection Error',
+          description: 'Failed to upload the video. Connection is down.',
+          status: 'error',
+          duration: 3000,
+          isClosable: true,
+        });
+
+        // Retry logic after detecting backend is available again
+        const retryInterval = setInterval(async () => {
+          try {
+            // Check if the backend is available by making a test request
+            await axios.get(`${baseUrl}/status`, { timeout: 3000 }, { withCredentials: true });
+
+            // If backend is back, retry the upload
+            clearInterval(retryInterval); // Stop retry attempts
+            toast({
+              title: 'Backend Available',
+              description: 'Backend is available. Retrying upload...',
+              status: 'success',
+              duration: 3000,
+              isClosable: true,
+            });
+            await handleUpload(file, index);
+          } catch (retryError) {
+            console.log('Still no connection, retrying...');
+          }
+        }, 5000);
+      }
     }
   };
 
   const updateFileUploadProgress = (index, progress) => {
     setVideoFiles(prevFiles => {
       if (!prevFiles[index]) {
-        console.error(`File at index ${index} is undefined`);
         return prevFiles;
       }
       const updatedFiles = [...prevFiles];
@@ -105,7 +145,6 @@ const UploadSection = () => {
     }
     setVideoFiles(prevFiles => {
       if (!prevFiles[index]) {
-        console.error(`File at index ${index} is undefined`);
         return prevFiles;
       }
       const updatedFiles = [...prevFiles];
@@ -127,16 +166,16 @@ const UploadSection = () => {
 
     try {
       updateFileStatus(index, 'Processing');
-
       const formData = new FormData();
-      formData.append('videoId', file.videoId); // Use videoId as expected
+      formData.append('videoId', file.videoId);
       formData.append('format', file.format.toLowerCase());
-      // Correct way to log the FormData contents
+
       const response = await fetch(`${baseUrl}/videos/convert`, {
         method: 'POST',
         body: formData,
+        credentials: 'include',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('idToken')}`,
         },
       });
 
@@ -146,16 +185,13 @@ const UploadSection = () => {
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder('utf-8');
-
       let done = false;
 
       while (!done) {
         const { value, done: readerDone } = await reader.read();
         done = readerDone;
         const chunk = decoder.decode(value, { stream: true });
-
         const cleanedChunk = chunk.trim().replace(/^data:\s*/, '');
-
         const progress = Number(cleanedChunk);
 
         if (!isNaN(progress)) {
@@ -169,8 +205,60 @@ const UploadSection = () => {
         }
       }
     } catch (error) {
-      console.error('Error during conversion:', error);
       updateFileStatus(index, 'Failed');
+      // Retry logic: Exponential Backoff
+      if (
+        error.message.includes('network error') ||
+        error.message.includes('ERR_CONNECTION_REFUSED') ||
+        error.message.includes('ERR_INCOMPLETE_CHUNKED_ENCODING')
+      ) {
+        toast({
+          title: 'Connection Error',
+          description: 'Failed to convert the video. Connection is down.',
+          status: 'error',
+          duration: 3000,
+          isClosable: true,
+        });
+
+        // Retry logic using exponential backoff
+        let attempt = 1;
+        const maxAttempts = 5;
+        const retryInterval = setInterval(async () => {
+          try {
+            const healthResponse = await axios.get(`${baseUrl}/status`, { timeout: 5000 }, {
+              withCredentials: true, // Important for CORS
+            });
+
+            if (healthResponse.status === 200) {
+              clearInterval(retryInterval);
+              toast({
+                title: 'Backend Available',
+                description: 'Backend is available. Retrying conversion...',
+                status: 'success',
+                duration: 3000,
+                isClosable: true,
+              });
+
+              // Use localStorage to persist and continue conversion from last known progress
+              localStorage.setItem('conversion', JSON.stringify({ file, index }));
+              await handleConvert(file, index);
+            }
+          } catch (retryError) {
+            console.log(`Attempt ${attempt} failed, retrying...`);
+            if (attempt >= maxAttempts) {
+              clearInterval(retryInterval);
+              toast({
+                title: 'Conversion Failed',
+                description: 'Maximum retry attempts reached. Please try again later.',
+                status: 'error',
+                duration: 3000,
+                isClosable: true,
+              });
+            }
+            attempt++;
+          }
+        }, Math.min(attempt * 2000, 10000));  // Exponential backoff with max 10 seconds delay
+      }
     }
   };
 
@@ -179,8 +267,9 @@ const UploadSection = () => {
       const response = await fetch(`${baseUrl}/videos/download/${file.videoId}`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('idToken')}`,
         },
+        credentials: 'include',
       });
 
       if (!response.ok) {
@@ -206,7 +295,6 @@ const UploadSection = () => {
   const updateFileStatus = (index, status) => {
     setVideoFiles(prevFiles => {
       if (!prevFiles[index]) {
-        console.error(`File at index ${index} is undefined`);
         return prevFiles;
       }
       const updatedFiles = [...prevFiles];
@@ -229,8 +317,10 @@ const UploadSection = () => {
     if (videoToDelete && videoToDelete.videoId) {
       try {
         await axios.delete(`${baseUrl}/videos/delete/${videoToDelete.videoId}`, {
+          withCredentials: true, // Important for CORS
+        }, {
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Authorization': `Bearer ${localStorage.getItem('idToken')}`,
           },
         });
         setVideoFiles(prevFiles => prevFiles.filter((_, i) => i !== index));
@@ -247,7 +337,7 @@ const UploadSection = () => {
       case 'Uploading':
         return (
           <HStack spacing={2}>
-            <Text color="orange.500">Uploading</Text>
+            <Text color="orange.500">Uploading..</Text>
             <Progress hasStripe value={file.uploadProgress} colorScheme="orange" size="sm" width="100px" />
           </HStack>
         );
@@ -362,18 +452,24 @@ const UploadSection = () => {
                     onChange={(e) => {
                       const newFiles = [...videoFiles];
                       newFiles[index].format = e.target.value;
+
+                      // Reset the status to 'WAITING' when format is changed
+                      newFiles[index].status = 'WAITING';
+
+                      // Clear any error messages
+                      setErrorMessages([]);
+
                       setVideoFiles(newFiles);
                     }}
                   >
                     <option value="MP4">MP4</option>
-                    <option value="FLV">FLV</option>
-                    <option value="MOV">MOV</option>
-                    {/* <option value="MKV">MKV</option> */}
-                    <option value="AVI">AVI</option>
                     <option value="WEBM">WEBM</option>
-                    {/* <option value="WMV">WMV</option> */}
-                    <option value="VOB">VOB</option>
+                    <option value="MOV">MOV</option>
+                    <option value="FLV">FLV</option>
+                    <option value="AVI">AVI</option>
+                    <option value="MPEG">MPEG</option>
                   </Select>
+
                   <IconButton
                     aria-label="Remove File"
                     icon={<FaTrashAlt />}
@@ -427,7 +523,7 @@ const UploadSection = () => {
                 videoFiles.forEach((file, index) => {
                   if (file.status === 'WAITING') {
                     handleUpload(file, index);
-                    setErrorMessages('');
+                    setErrorMessages([]); // Clear any previous error messages
                   }
                 });
               }}
@@ -442,3 +538,4 @@ const UploadSection = () => {
 };
 
 export default UploadSection;
+

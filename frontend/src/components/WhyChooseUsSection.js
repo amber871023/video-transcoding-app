@@ -45,7 +45,7 @@ const WhyChooseUsSection = () => {
           <CardBody textAlign="center">
             <Text fontWeight="bold" mb={2}>Supports Any Format</Text>
             <Text>
-              We support all popular formats like MP4, FLV, MOV, AVI, WEBM and VOB, as well as many less common ones.
+              We support all popular formats like MP4, FLV, MOV, AVI, WEBM and MPEG, as well as many less common ones.
             </Text>
           </CardBody>
         </Card>
